@@ -10,7 +10,9 @@ export default new Phaser.Class({
 
     preload: function () {
         // map made with Tiled in JSON format
-        this.load.tilemapTiledJSON('map', 'assets/level1.json');
+        this.load.tilemapTiledJSON('map1', 'assets/level1.json');
+        this.load.tilemapTiledJSON('map2', 'assets/level2.json');
+        this.load.tilemapTiledJSON('map3', 'assets/level2.json');
         // tiles in spritesheet
         this.load.spritesheet('tilemap', 'assets/tilemap.png', {frameWidth: 32, frameHeight: 32});
         //this.load.spritesheet('icons', 'assets/icons.png', {frameWidth: 32, frameHeight: 32});
@@ -26,12 +28,16 @@ export default new Phaser.Class({
     },
 
    create: function() {
-      console.log(this.registry);
-
+      this.level = this.registry.values.level;
+      console.log(this.level);
+      //console.log(this.registry);
       this.score = this.registry.values.score;
+      this.gameMessage = "";
+      this.levelComplete = false;
+      this.playingDeathSeq = false;
 
       // load the map
-      this.map = this.make.tilemap({key: 'map'});
+      this.map = this.make.tilemap({key: 'map' + this.level});
 
       // tiles for the ground layer
       var levelTiles = this.map.addTilesetImage('tilemap');
@@ -52,9 +58,13 @@ export default new Phaser.Class({
 
       // create the player sprite
       var playerLayer = this.map.getObjectLayer('player')['objects'];
-      this.player = this.physics.add.sprite(playerLayer[0].x+16, playerLayer[0].y-16, 'player',0);
+      //this.player = this.physics.add.sprite(playerLayer[0].x+16, playerLayer[0].y-16, 'player',0);
+      //TESTING
+      //this.player = this.physics.add.sprite(560, 216, 'player',0);
+      this.player = this.physics.add.sprite(752, 128, 'player',0);
       this.player.setCollideWorldBounds(true); // don't go out of the map
       this.player.body.setAllowGravity(false);
+      this.player.dead = false;
 
       // small fix to our player images, we resize the physics body object slightly
       this.player.body.setSize(this.player.width-8, this.player.height-8 );
@@ -78,6 +88,12 @@ export default new Phaser.Class({
           frameRate: 10,
           repeat: -1
       });
+      this.anims.create({
+          key: 'death',
+          frames: this.anims.generateFrameNames('player', {prefix: 'man ',suffix: '.aseprite', start: 48, end: 56}),
+          frameRate: 10,
+          repeat: 0
+      });
 
       //this.iconLayer = this.map.createDynamicLayer('icons', iconTiles, 0, 0);
       //this.icons = this.map.createFromObjects('icons', 'iconsprites', { key: 'icon' });
@@ -86,26 +102,6 @@ export default new Phaser.Class({
       var icons = this.map.getObjectLayer('icons')['objects'];
       this.icongroup = this.physics.add.group();
       //Define order of collection
-      /*
-      this.iconOrder = {'icons':[
-        { 'pop' : 1 },
-        { 'beans' : 2 },
-        { 'bread' : 3 },
-        { 'sanitizer' : 4 },
-        { 'rice' : 5 },
-        { 'toiletroll' : 6 }
-      ]}*/
-
-      /*
-      this.iconOrder = {
-        'pop' : 1,
-        'beans' : 2,
-        'bread' : 3,
-        'sanitizer' : 4,
-        'rice' : 5,
-        'toiletroll' : 6
-      }*/
-
       this.iconOrder = {
         'pop' : {'order':1,'points':500},
         'beans' : {'order':2,'points':1000},
@@ -138,6 +134,7 @@ export default new Phaser.Class({
       this.activeSprite.setVisible(true);
       this.activeSprite.setActive(true);
       */
+      console.log(this.activeSprite);
 
       var zombies = this.map.getObjectLayer('zombie')['objects'];
       this.zombiegroup = this.physics.add.group();
@@ -202,12 +199,30 @@ export default new Phaser.Class({
       var scorerect = new Phaser.Geom.Rectangle(0, 0, this.map.widthInPixels,28 );
       this.scorepanel.fillRectShape(scorerect);
 
-      // text which floats to top when points scored
+      // text which displays the score
       this.scoreTxt = this.add.text(0, 0, 'Score: ' +  this.score, {
           fontSize: '20px',
           fill: '#ffffff'
       });
       this.scoreTxt.setScrollFactor(0);
+      //display lives
+      this.livesTxt = this.add.text(300, 0, 'Lives: ' +  this.registry.values.lives, {
+          fontSize: '20px',
+          fill: '#ffffff'
+      });
+      this.livesTxt.setScrollFactor(0);
+
+      //Centre of screen
+      //this.screenCenterX = this.cameras.main.worldView.x + this.cameras.main.width / 2;
+      //this.screenCenterY = this.cameras.main.worldView.y + this.cameras.main.height / 2;
+
+      this.messageTxt = this.add.text(0,0, '', {
+          fontSize: '20px',
+          fill: '#ffffff',
+          align: "center"
+      });
+      this.messageTxt.setScrollFactor(0);
+      this.messageTxt.setVisible(false);
   },
 
 
@@ -222,60 +237,99 @@ export default new Phaser.Class({
         this.points.setVisible(false);
       }
 
-      if (this.cursors.down.isDown)
-      {
-        if(!this.playerCollides(this.player.body.x,this.player.body.y+4)) {
-          this.player.anims.play('walk',true);
-          this.player.y+=2;
-        }
-      } else if (this.cursors.up.isDown) {
-        if(!this.playerCollides(this.player.body.x,this.player.body.y-4)) {
-          this.player.anims.play('reverse',true);
-          this.player.y-=2;
-        }
-      } else if (this.cursors.right.isDown) {
-        if(!this.playerCollides(this.player.body.x+4,this.player.body.y)) {
-          this.player.anims.play('walk',true);
-          this.player.x+=2;
-        }
-      } else if (this.cursors.left.isDown) {
-        if(!this.playerCollides(this.player.body.x-4,this.player.body.y)) {
-          this.player.anims.play('walk',true);
-          this.player.x-=2;
-        }
+      //Make text "float" upwards
+      if(this.messageTxt.y != 0) {
+        this.messageTxt.y -= 4;
       } else {
-        this.player.anims.play('idle',true);
+        this.messageTxt.setVisible(false);
+      }
+
+      if(!this.player.dead) {
+        if (this.cursors.down.isDown)
+        {
+          if(!this.playerCollides(this.player.body.x,this.player.body.y+4)) {
+            this.player.anims.play('walk',true);
+            this.player.y+=2;
+          }
+        } else if (this.cursors.up.isDown) {
+          if(!this.playerCollides(this.player.body.x,this.player.body.y-4)) {
+            this.player.anims.play('reverse',true);
+            this.player.y-=2;
+          }
+        } else if (this.cursors.right.isDown) {
+          if(!this.playerCollides(this.player.body.x+4,this.player.body.y)) {
+            this.player.anims.play('walk',true);
+            this.player.x+=2;
+          }
+        } else if (this.cursors.left.isDown) {
+          if(!this.playerCollides(this.player.body.x-4,this.player.body.y)) {
+            this.player.anims.play('walk',true);
+            this.player.x-=2;
+          }
+        } else {
+          this.player.anims.play('idle',true);
+        }
+        this.zombiegroup.children.entries.forEach(zombie => this.zombieEatPlayer(zombie));
+      } else {
+        if(!this.playingDeathSeq) {
+          this.playingDeathSeq = true;
+          this.player.anims.play('death',true);
+          this.registry.values.lives--;
+          if (this.registry.values.lives != -1) {
+            this.livesTxt.setText('Lives: ' +  this.registry.values.lives);
+          }
+        }
       }
 
       //Get the active icon area and check for overlap
-      var iconarea = new Phaser.Geom.Rectangle(this.activeSprite.x-16,this.activeSprite.y-16, 32, 32);
-      if (iconarea.contains(this.player.x,this.player.y)) {
-        if(this.activeSprite.collectOrder != 6) {
-          var nextSprite = this.activeSprite.collectOrder;
+      if(!this.levelComplete) {
+        var iconarea = new Phaser.Geom.Rectangle(this.activeSprite.x-16,this.activeSprite.y-16, 32, 32);
+        if (iconarea.contains(this.player.x,this.player.y)) {
+          if(this.activeSprite.collectOrder != 6) {
+            var nextSprite = this.activeSprite.collectOrder;
 
-          //Score text
-          this.score += this.activeSprite.points;
-          this.scoreTxt.setText('Score: '+this.score);
-          this.points.setText(this.activeSprite.points);
-          this.points.setPosition(this.activeSprite.x, this.activeSprite.y-16);
-          this.points.setVisible(true);
-          this.activeSprite.destroy();
-          console.log(nextSprite);
-          console.log(this.icongroup.children.entries);
-          this.activeSprite = this.icongroup.children.entries.filter(icon => icon.collectOrder == nextSprite+1)[0];
-          console.log(this.activeSprite);
-          this.activeSprite.setVisible(true);
-          this.activeSprite.setActive(true);
-        } else {
-          this.score += this.activeSprite.points;
-          this.scoreTxt.setText('Score: '+this.score);
-          this.points.setText(this.activeSprite.points);
-          this.points.setPosition(this.activeSprite.x, this.activeSprite.y-16);
-          this.points.setVisible(true);
-          this.activeSprite.destroy();
-          //Scene Transition
+            //Score text
+            this.score += this.activeSprite.points;
+            this.scoreTxt.setText('Score: '+this.score);
+            this.points.setText(this.activeSprite.points);
+            this.points.setPosition(this.activeSprite.x, this.activeSprite.y-16);
+            this.points.setVisible(true);
+            this.activeSprite.destroy();
+            console.log(nextSprite);
+            console.log(this.icongroup.children.entries);
+            this.activeSprite = this.icongroup.children.entries.filter(icon => icon.collectOrder == nextSprite+1)[0];
+            console.log(this.activeSprite);
+            this.activeSprite.setVisible(true);
+            this.activeSprite.setActive(true);
+          } else {
+            this.levelComplete = true;
+            this.score += this.activeSprite.points;
+            this.scoreTxt.setText('Score: '+this.score);
+            this.points.setText(this.activeSprite.points);
+            this.points.setPosition(this.activeSprite.x, this.activeSprite.y-16);
+            this.points.setVisible(true);
+            this.activeSprite.destroy();
+            //Scene Transition
+            this.gameMessage = "Level " + this.level + " Complete";
+            this.messageTxt.setText(this.gameMessage).setOrigin(0.5);
+            this.messageTxt.setPosition(400, 300);
+            this.messageTxt.setVisible(true);
+            this.levelCompleteTimer = this.time.addEvent({
+              delay: 3000,
+              callback: function() {
+                //go to next level
+                this.registry.set('score',this.score);
+                this.registry.set('level',this.level+1);
+                //this.load.start();
+                this.scene.restart();
+              },
+              callbackScope: this,
+              loop: false
+            });
+          }
         }
       }
+
       //this.graphics.clear();
       //this.graphics.fillRectShape(iconarea);
   },
@@ -313,6 +367,51 @@ export default new Phaser.Class({
       return true;
     } else {
       return false;
+    }
+  },
+
+  zombieEatPlayer: function(zombie) {
+    var deathRect = new Phaser.Geom.Rectangle(this.player.body.x, this.player.body.y, 32, 32);
+    if(deathRect.contains(zombie.x,zombie.y) && !this.player.dead) {
+      console.log("Player Died");
+      this.player.dead = true;
+
+      if (this.registry.values.lives > 0) {
+
+        this.gameMessage = "You Died!";
+        this.messageTxt.setText(this.gameMessage).setOrigin(0.5);
+        this.messageTxt.setPosition(400, 300);
+        this.messageTxt.setVisible(true);
+        //Respawn player
+        this.respawnTimer = this.time.addEvent({
+          delay: 3000,
+          callback: function() {
+            this.player.dead = false;
+            this.playingDeathSeq = false;
+          },
+          callbackScope: this,
+          loop: false
+        });
+
+      } else {
+        this.gameMessage = "Game Over";
+        this.messageTxt.setText(this.gameMessage).setOrigin(0.5);
+        this.messageTxt.setPosition(400, 300);
+        this.messageTxt.setVisible(true);
+      }
+
+      //Fade out screen
+      var blackRectangle = this.add.graphics({ fillStyle: { color: 0x000000, alpha:0.5 } });
+      var coverScreen = new Phaser.Geom.Rectangle(0, 0, this.map.widthInPixels,this.map.heightInPixels );
+      blackRectangle.fillRectShape(coverScreen);
+      this.tweens.add({
+          targets: blackRectangle,
+          duration: 1000,
+          delay: 0,
+          alpha: 0,
+          repeat: 0,
+          yoyo: false
+      });
     }
   }
 

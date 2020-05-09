@@ -1,5 +1,6 @@
 import Phaser from "phaser";
-import Level1 from "./level1.js"
+import Level1 from "./level1.js";
+//import ChangeLevel from "./changelevel.js";
 
 var config = {
     type: Phaser.AUTO,
@@ -20,3 +21,4 @@ var game = new Phaser.Game(config);
 //Set Global
 game.registry.set('score',0);
 game.registry.set('level',1);
+game.registry.set('lives',3);
