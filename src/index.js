@@ -16,3 +16,7 @@ var config = {
 }
 
 var game = new Phaser.Game(config);
+
+//Set Global
+game.registry.set('score',0);
+game.registry.set('level',1);

@@ -26,6 +26,10 @@ export default new Phaser.Class({
     },
 
    create: function() {
+      console.log(this.registry);
+
+      this.score = this.registry.values.score;
+
       // load the map
       this.map = this.make.tilemap({key: 'map'});
 
@@ -74,46 +78,6 @@ export default new Phaser.Class({
           frameRate: 10,
           repeat: -1
       });
-      /*
-      this.anims.create({
-          key: 'walk-down-left',
-          frames: this.anims.generateFrameNames('warrior-flipped', {prefix: 'coronawarrior-FLIPPED ',suffix: '.aseprite', start: 0, end: 7}),
-          frameRate: 10,
-          repeat: -1
-      });
-      this.anims.create({
-          key: 'walk-up-right',
-          frames: this.anims.generateFrameNames('warrior-flipped', {prefix: 'coronawarrior-FLIPPED ',suffix: '.aseprite', start: 8, end: 15}),
-          frameRate: 10,
-          repeat: -1
-      });
-      this.anims.create({
-          key: 'walk-down-right',
-          frames: this.anims.generateFrameNames('warrior', {prefix: 'coronawarrior ',suffix: '.aseprite', start: 0, end: 7}),
-          frameRate: 10,
-          repeat: -1
-      });
-      this.anims.create({
-          key: 'walk-up-left',
-          frames: this.anims.generateFrameNames('warrior', {prefix: 'coronawarrior ',suffix: '.aseprite', start: 8, end: 15}),
-          frameRate: 10,
-          repeat: -1
-      });
-      this.anims.create({
-          key: 'idle',
-          frames: this.anims.generateFrameNames('warrior', {prefix: 'coronawarrior ',suffix: '.aseprite', start: 3, end: 3}),
-          frameRate: 10,
-          repeat: -1
-      });
-      this.player.anims.play('idle',true);
-
-      this.player.on('animationcomplete',function () {
-          if(this.player.anims.currentAnim.key == 'jump' && !this.jumping) {
-
-          }
-
-      }, this );
-      */
 
       //this.iconLayer = this.map.createDynamicLayer('icons', iconTiles, 0, 0);
       //this.icons = this.map.createFromObjects('icons', 'iconsprites', { key: 'icon' });
@@ -132,6 +96,7 @@ export default new Phaser.Class({
         { 'toiletroll' : 6 }
       ]}*/
 
+      /*
       this.iconOrder = {
         'pop' : 1,
         'beans' : 2,
@@ -139,22 +104,40 @@ export default new Phaser.Class({
         'sanitizer' : 4,
         'rice' : 5,
         'toiletroll' : 6
+      }*/
+
+      this.iconOrder = {
+        'pop' : {'order':1,'points':500},
+        'beans' : {'order':2,'points':1000},
+        'bread' : {'order':3,'points':1000},
+        'sanitizer' : {'order':4,'points':2000},
+        'rice' : {'order':5,'points':5000},
+        'toiletroll' : {'order':6,'points':10000},
       }
 
       console.log(this.iconOrder['beans']);
 
       icons.forEach(icon => {
-        console.log(icon);
         var iconsprite = this.icongroup.create(icon.x+16, icon.y-16, icon.name);
         iconsprite.body.setAllowGravity(false);
-        iconsprite.collectOrder = this.iconOrder[icon.name];
-        if (this.iconOrder[icon.name] != 1) {
+        iconsprite.collectOrder = this.iconOrder[icon.name].order;
+        iconsprite.points = this.iconOrder[icon.name].points;
+        if (this.iconOrder[icon.name].order != 1) {
           iconsprite.setVisible(false);
           iconsprite.setActive(false);
         } else {
           this.activeSprite = iconsprite;
         }
       });
+
+      //For testing scene transition
+      /*
+      this.activeSprite.destroy();
+      this.activeSprite = this.icongroup.children.entries.filter(icon => icon.collectOrder == 6)[0]
+      console.log(this.activeSprite);
+      this.activeSprite.setVisible(true);
+      this.activeSprite.setActive(true);
+      */
 
       var zombies = this.map.getObjectLayer('zombie')['objects'];
       this.zombiegroup = this.physics.add.group();
@@ -210,9 +193,21 @@ export default new Phaser.Class({
       this.points.setScrollFactor(0);
       this.points.setVisible(false);
 
+
+
       //Used for debugging only
       this.graphics = this.add.graphics({ fillStyle: { color: 0x0000ff } });
+      //Score panel
+      this.scorepanel = this.add.graphics({ fillStyle: { color: 0x000000, alpha:0.5 } });
+      var scorerect = new Phaser.Geom.Rectangle(0, 0, this.map.widthInPixels,28 );
+      this.scorepanel.fillRectShape(scorerect);
 
+      // text which floats to top when points scored
+      this.scoreTxt = this.add.text(0, 0, 'Score: ' +  this.score, {
+          fontSize: '20px',
+          fill: '#ffffff'
+      });
+      this.scoreTxt.setScrollFactor(0);
   },
 
 
@@ -257,11 +252,14 @@ export default new Phaser.Class({
       if (iconarea.contains(this.player.x,this.player.y)) {
         if(this.activeSprite.collectOrder != 6) {
           var nextSprite = this.activeSprite.collectOrder;
-          this.activeSprite.destroy();
+
           //Score text
-          this.points.setText('1000');
+          this.score += this.activeSprite.points;
+          this.scoreTxt.setText('Score: '+this.score);
+          this.points.setText(this.activeSprite.points);
           this.points.setPosition(this.activeSprite.x, this.activeSprite.y-16);
           this.points.setVisible(true);
+          this.activeSprite.destroy();
           console.log(nextSprite);
           console.log(this.icongroup.children.entries);
           this.activeSprite = this.icongroup.children.entries.filter(icon => icon.collectOrder == nextSprite+1)[0];
@@ -269,12 +267,17 @@ export default new Phaser.Class({
           this.activeSprite.setVisible(true);
           this.activeSprite.setActive(true);
         } else {
+          this.score += this.activeSprite.points;
+          this.scoreTxt.setText('Score: '+this.score);
+          this.points.setText(this.activeSprite.points);
+          this.points.setPosition(this.activeSprite.x, this.activeSprite.y-16);
+          this.points.setVisible(true);
           this.activeSprite.destroy();
           //Scene Transition
         }
       }
-      this.graphics.clear();
-      this.graphics.fillRectShape(iconarea);
+      //this.graphics.clear();
+      //this.graphics.fillRectShape(iconarea);
   },
 
   moveZombie: function (zombie) {
