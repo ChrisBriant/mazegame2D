@@ -12,9 +12,17 @@ export default new Phaser.Class({
         // map made with Tiled in JSON format
         this.load.tilemapTiledJSON('map', 'assets/level1.json');
         // tiles in spritesheet
-        this.load.spritesheet('tilemap', 'assets/tilemap.png', {frameWidth: 64, frameHeight: 32});
+        this.load.spritesheet('tilemap', 'assets/tilemap.png', {frameWidth: 32, frameHeight: 32});
+        //this.load.spritesheet('icons', 'assets/icons.png', {frameWidth: 32, frameHeight: 32});
         // player animations
         this.load.atlas('player', 'assets/player.png', 'assets/player.json');
+        //Load icons
+        this.load.image('beans', 'assets/icons/beans.png');
+        this.load.image('toiletroll', 'assets/icons/toiletroll.png');
+        this.load.image('sanitizer', 'assets/icons/sanitizer.png');
+        this.load.image('rice', 'assets/icons/rice.png');
+        this.load.image('pop', 'assets/icons/pop.png');
+        this.load.image('bread', 'assets/icons/bread.png');
     },
 
    create: function() {
@@ -23,6 +31,7 @@ export default new Phaser.Class({
 
       // tiles for the ground layer
       var levelTiles = this.map.addTilesetImage('tilemap');
+      //var iconTiles = this.map.addTilesetImage('icons');
 
       //world layer
       this.floor = this.map.createDynamicLayer('floor', levelTiles, 0, 0);
@@ -43,15 +52,8 @@ export default new Phaser.Class({
       this.player.setCollideWorldBounds(true); // don't go out of the map
       this.player.body.setAllowGravity(false);
 
-      //this.physics.add.collider(this.player, this.shelves);
-
       // small fix to our player images, we resize the physics body object slightly
       this.player.body.setSize(this.player.width-8, this.player.height-8 );
-
-      // player will collide with the level tiles
-      //this.physics.add.overlap(this.shelves, this.player,function(player,shelve) {
-        //console.log(player);
-      //},null,this);
 
       // player animations
       this.anims.create({
@@ -113,6 +115,46 @@ export default new Phaser.Class({
       }, this );
       */
 
+      //this.iconLayer = this.map.createDynamicLayer('icons', iconTiles, 0, 0);
+      //this.icons = this.map.createFromObjects('icons', 'iconsprites', { key: 'icon' });
+
+      //console.log(this.icons);
+      var icons = this.map.getObjectLayer('icons')['objects'];
+      this.icongroup = this.physics.add.group();
+      //Define order of collection
+      /*
+      this.iconOrder = {'icons':[
+        { 'pop' : 1 },
+        { 'beans' : 2 },
+        { 'bread' : 3 },
+        { 'sanitizer' : 4 },
+        { 'rice' : 5 },
+        { 'toiletroll' : 6 }
+      ]}*/
+
+      this.iconOrder = {
+        'pop' : 1,
+        'beans' : 2,
+        'bread' : 3,
+        'sanitizer' : 4,
+        'rice' : 5,
+        'toiletroll' : 6
+      }
+
+      console.log(this.iconOrder['beans']);
+
+      icons.forEach(icon => {
+        console.log(icon);
+        var iconsprite = this.icongroup.create(icon.x+16, icon.y-16, icon.name);
+        iconsprite.body.setAllowGravity(false);
+        iconsprite.collectOrder = this.iconOrder[icon.name];
+        if (this.iconOrder[icon.name] != 1) {
+          iconsprite.setVisible(false);
+          iconsprite.setActive(false);
+        } else {
+          this.activeSprite = iconsprite;
+        }
+      });
 
       var zombies = this.map.getObjectLayer('zombie')['objects'];
       this.zombiegroup = this.physics.add.group();
@@ -160,12 +202,13 @@ export default new Phaser.Class({
       // set background color, so the sky is not black
       //this.cameras.main.setBackgroundColor('#ccccff');
 
-      // this text will show the score
-      this.text = this.add.text(20, 570, '0', {
+      // text which floats to top when points scored
+      this.points = this.add.text(0, 0, '', {
           fontSize: '20px',
           fill: '#ffffff'
       });
-      this.text.setScrollFactor(0);
+      this.points.setScrollFactor(0);
+      this.points.setVisible(false);
 
       //Used for debugging only
       this.graphics = this.add.graphics({ fillStyle: { color: 0x0000ff } });
@@ -176,6 +219,13 @@ export default new Phaser.Class({
   update: function(time, delta) {
       //Update the display with the new velocity
       //this.speed.setText(this.player.body.velocity.x);
+
+      //Make text "float" upwards
+      if(this.points.y != 0) {
+        this.points.y -= 4;
+      } else {
+        this.points.setVisible(false);
+      }
 
       if (this.cursors.down.isDown)
       {
@@ -202,7 +252,29 @@ export default new Phaser.Class({
         this.player.anims.play('idle',true);
       }
 
-
+      //Get the active icon area and check for overlap
+      var iconarea = new Phaser.Geom.Rectangle(this.activeSprite.x-16,this.activeSprite.y-16, 32, 32);
+      if (iconarea.contains(this.player.x,this.player.y)) {
+        if(this.activeSprite.collectOrder != 6) {
+          var nextSprite = this.activeSprite.collectOrder;
+          this.activeSprite.destroy();
+          //Score text
+          this.points.setText('1000');
+          this.points.setPosition(this.activeSprite.x, this.activeSprite.y-16);
+          this.points.setVisible(true);
+          console.log(nextSprite);
+          console.log(this.icongroup.children.entries);
+          this.activeSprite = this.icongroup.children.entries.filter(icon => icon.collectOrder == nextSprite+1)[0];
+          console.log(this.activeSprite);
+          this.activeSprite.setVisible(true);
+          this.activeSprite.setActive(true);
+        } else {
+          this.activeSprite.destroy();
+          //Scene Transition
+        }
+      }
+      this.graphics.clear();
+      this.graphics.fillRectShape(iconarea);
   },
 
   moveZombie: function (zombie) {
