@@ -182,6 +182,9 @@ export default new Phaser.Class({
       // set background color, so the sky is not black
       //this.cameras.main.setBackgroundColor('#ccccff');
 
+
+      this.blackRectangle = this.add.graphics({ fillStyle: { color: 0x000000} }).setAlpha(0);
+
       // text which floats to top when points scored
       this.points = this.add.text(0, 0, '', {
           fontSize: '20px',
@@ -376,6 +379,14 @@ export default new Phaser.Class({
       console.log("Player Died");
       this.player.dead = true;
 
+      //Fade out screen
+      var coverScreen = new Phaser.Geom.Rectangle(0, 0, this.map.widthInPixels,this.map.heightInPixels );
+      this.blackRectangle.fillRectShape(coverScreen);
+      this.tweens.add({
+          targets: this.blackRectangle,
+          alpha: 1,
+      });
+
       if (this.registry.values.lives > 0) {
 
         this.gameMessage = "You Died!";
@@ -388,6 +399,10 @@ export default new Phaser.Class({
           callback: function() {
             this.player.dead = false;
             this.playingDeathSeq = false;
+            //this.fadeToBlack.destroy();
+            //this.removeTween(this.fadeToBlack);
+            this.blackRectangle.clear();
+            console.log(this.tweens);
           },
           callbackScope: this,
           loop: false
@@ -400,18 +415,6 @@ export default new Phaser.Class({
         this.messageTxt.setVisible(true);
       }
 
-      //Fade out screen
-      var blackRectangle = this.add.graphics({ fillStyle: { color: 0x000000, alpha:0.5 } });
-      var coverScreen = new Phaser.Geom.Rectangle(0, 0, this.map.widthInPixels,this.map.heightInPixels );
-      blackRectangle.fillRectShape(coverScreen);
-      this.tweens.add({
-          targets: blackRectangle,
-          duration: 1000,
-          delay: 0,
-          alpha: 0,
-          repeat: 0,
-          yoyo: false
-      });
     }
   }
 
