@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import Level1 from "./level1.js";
+import Multiplayer from "./multiplayer.js";
 //import ChangeLevel from "./changelevel.js";
 
 var config = {
@@ -13,7 +14,7 @@ var config = {
             debug: true
         }
     },
-    scene: [Level1]
+    scene: [Multiplayer]
 }
 
 var game = new Phaser.Game(config);
