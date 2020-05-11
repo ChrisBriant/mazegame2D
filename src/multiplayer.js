@@ -32,25 +32,69 @@ export default new Phaser.Class({
    create: function() {
      this.socket = io();
      this.socket = io.connect('http://localhost:8081');
-     console.log(this.socket.json);
+     //this.playerNo = 0;
+     console.log(this.socket);
      //this.scene.pause();
      //var socketId = this.socket['id'];
-     //console.log(socketId);
+     //console.log(this.socket._callbacks);
+     var socket_ID;
+     var playerNo = 0;
 
+     this.socket.on('socketID', function (socketID) {
+       //alert(socketID);
+       console.log(socketID);
+       socket_ID= socketID;
+     });
 
-     //this.socket.on('currentPlayers', function (players) {
-        //Object.keys(players).forEach(function (id) {
-          //console.log(players[id].playerId);
-          //console.log(socketId);
-          /*
-          if (players[id].playerId === self.socket.id) {
-            addPlayer(self, players[id]);
-          } else {
-            addOtherPlayers(self, players[id]);
-          }*/
-      //  });
-      //});
-      this.socket.emit('playerMovement', { x: 28, y: 92, rotation: 44 });
+     this.socket.on('currentPlayers', function (players) {
+       //When players is an array
+       /*
+       for(var i=0;i<players.length;i++) {
+         var player = players[i].filter(p => p.playerId === socket_ID);
+         if(playerNo == 0) {
+           //console.log("Here");
+           if(player.length > 0) {
+             console.log("Found Player");
+             console.log(player);
+             if(players[i].length > 1) {
+               playerNo = player[0].playerNo;
+               alert("I am player " + playerNo);
+             }
+           }
+         }
+       }*/
+        //lert(socket_ID);
+        var player = players.filter(p => p.playerId === socket_ID)[0];
+        console.log("Player");
+        console.log(player);
+        if(player.playerNo == 2) {
+          //alert("I am player 2");
+          this.emit('player2Ready', { player });
+        }
+        /*
+        Object.keys(players).forEach(function (id) {
+          console.log(players[id].playerId);
+          console.log(socket_ID);
+          if (players[id].playerId === socket_ID) {
+            if(players[id].player)
+          }
+        });*/
+      });
+
+      var paired = false;
+
+      this.socket.on('pair', function (pair) {
+        if(!paired) {
+            var me = pair.filter(p => p.playerId == socket_ID);
+            console.log(me);
+            if(me.length > 0) {
+              paired = true;
+              alert(me[0]);
+            }
+        }
+      });
+
+      //this.socket.emit('playerMovement', { x: 28, y: 92, rotation: 44 });
       this.level = this.registry.values.level;
       console.log(this.level);
       //console.log(this.registry);
