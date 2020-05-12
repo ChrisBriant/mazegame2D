@@ -82,19 +82,8 @@ export default new Phaser.Class({
         });*/
       });
 
-      var paired = false;
-
-      this.socket.on('pair', function (pair) {
-        if(!paired) {
-            alert(JSON.stringify(pair));
-            this.createPlayer(pair);
-        }
-      });
-
       //this.socket.emit('playerMovement', { x: 28, y: 92, rotation: 44 });
       this.level = this.registry.values.level;
-      console.log(this.level);
-      //console.log(this.registry);
       this.score = this.registry.values.score;
       this.gameMessage = "";
       this.levelComplete = false;
@@ -102,6 +91,117 @@ export default new Phaser.Class({
 
       // load the map
       this.map = this.make.tilemap({key: 'map' + this.level});
+
+      this.cameras.main.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
+
+      this.paired = false;
+      var paired = this.paired;
+      this.player;
+      this.player2;
+      var player = this.player;
+      var player2 = this.player2;
+      var scenePhysics = this.physics;
+      var map = this.map;
+      var sceneCameras = this.cameras;
+      var sc = this;
+
+      this.socket.on('pair', function (pair) {
+        if(!sc.paired) {
+            alert(JSON.stringify(pair));
+            sc.paired = true;
+            // set bounds so the camera won't go outside the game world
+            if(pair[0].playerId == socket_ID) {
+              var me = pair[0];
+              var otherPlayer = pair[1];
+            } else {
+              var me = pair[1];
+              var otherPlayer = pair[0];
+            }
+
+            if(me.playerNo == 1) {
+              alert("I am 1");
+              // create the player sprite
+              var playerLayer = map.getObjectLayer('player')['objects'];
+              var player2Layer = map.getObjectLayer('player2')['objects'];
+              player = scenePhysics.add.sprite(playerLayer[0].x+16, playerLayer[0].y-16, 'player',0);
+              player2 = scenePhysics.add.sprite(player2Layer[0].x+16, player2Layer[0].y-16, 'player2',0);
+            } else {
+              alert("I am 2");
+              var playerLayer = map.getObjectLayer('player2')['objects'];
+              var player2Layer = map.getObjectLayer('player')['objects'];
+              player = scenePhysics.add.sprite(playerLayer[0].x+16, playerLayer[0].y-16, 'player2',0);
+              player2 = scenePhysics.add.sprite(player2Layer[0].x+16, player2Layer[0].y-16, 'player',0);
+            }
+            player.setCollideWorldBounds(true); // don't go out of the map
+            player.body.setAllowGravity(false);
+            player2.body.setAllowGravity(false);
+            player.dead = false;
+
+            // small fix to our player images, we resize the physics body object slightly
+            player.body.setSize(player.width-8, player.height-8 );
+            player2.body.setSize(player.width-8, player.height-8 );
+            // make the camera follow the player
+            sceneCameras.main.startFollow(player);
+            player.playerId = me.playerId
+        }
+      });
+
+      //this.socket.on('otherplayer', function (other) {
+      //});
+
+
+
+      // player animations
+      this.anims.create({
+          key: 'walk',
+          frames: this.anims.generateFrameNames('player', {prefix: 'man ',suffix: '.aseprite', start: 0, end: 11}),
+          frameRate: 10,
+          repeat: -1
+      });
+      this.anims.create({
+          key: 'reverse',
+          frames: this.anims.generateFrameNames('player', {prefix: 'man ',suffix: '.aseprite', start: 12, end: 23}),
+          frameRate: 10,
+          repeat: -1
+      });
+      this.anims.create({
+          key: 'idle',
+          frames: this.anims.generateFrameNames('player', {prefix: 'man ',suffix: '.aseprite', start: 11, end: 11}),
+          frameRate: 10,
+          repeat: -1
+      });
+      this.anims.create({
+          key: 'death',
+          frames: this.anims.generateFrameNames('player', {prefix: 'man ',suffix: '.aseprite', start: 48, end: 56}),
+          frameRate: 10,
+          repeat: 0
+      });
+
+      // player2 animations
+      this.anims.create({
+          key: 'p2walk',
+          frames: this.anims.generateFrameNames('player2', {prefix: 'player2 ',suffix: '.aseprite', start: 0, end: 11}),
+          frameRate: 10,
+          repeat: -1
+      });
+      this.anims.create({
+          key: 'p2reverse',
+          frames: this.anims.generateFrameNames('player2', {prefix: 'player2 ',suffix: '.aseprite', start: 12, end: 23}),
+          frameRate: 10,
+          repeat: -1
+      });
+      this.anims.create({
+          key: 'p2idle',
+          frames: this.anims.generateFrameNames('player2', {prefix: 'player2 ',suffix: '.aseprite', start: 11, end: 11}),
+          frameRate: 10,
+          repeat: -1
+      });
+      this.anims.create({
+          key: 'p2death',
+          frames: this.anims.generateFrameNames('player2', {prefix: 'man ',suffix: '.aseprite', start: 24, end: 32}),
+          frameRate: 10,
+          repeat: 0
+      });
 
       // tiles for the ground layer
       var levelTiles = this.map.addTilesetImage('tilemap');
@@ -204,10 +304,7 @@ export default new Phaser.Class({
 
       this.cursors = this.input.keyboard.createCursorKeys();
 
-      // set bounds so the camera won't go outside the game world
-      this.cameras.main.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
-      // make the camera follow the player
-      this.cameras.main.startFollow(this.player);
+
 
       // set background color, so the sky is not black
       //this.cameras.main.setBackgroundColor('#ccccff');
@@ -260,9 +357,7 @@ export default new Phaser.Class({
 
 
   update: function(time, delta) {
-      /*
       //Update the display with the new velocity
-      //this.speed.setText(this.player.body.velocity.x);
 
       //Make text "float" upwards
       if(this.points.y != 0) {
@@ -278,173 +373,103 @@ export default new Phaser.Class({
         this.messageTxt.setVisible(false);
       }
 
-      if(!this.player.dead) {
-        if (this.cursors.down.isDown)
-        {
-          if(!this.playerCollides(this.player.body.x,this.player.body.y+4)) {
-            this.player.anims.play('walk',true);
-            this.player.y+=2;
+
+      if(this.paired) {
+        alert("PAIRED");
+        if(!this.player.dead) {
+          if (this.cursors.down.isDown)
+          {
+            if(!this.playerCollides(this.player.body.x,this.player.body.y+4)) {
+              this.player.anims.play('walk',true);
+              this.player.y+=2;
+            }
+          } else if (this.cursors.up.isDown) {
+            if(!this.playerCollides(this.player.body.x,this.player.body.y-4)) {
+              this.player.anims.play('reverse',true);
+              this.player.y-=2;
+            }
+          } else if (this.cursors.right.isDown) {
+            if(!this.playerCollides(this.player.body.x+4,this.player.body.y)) {
+              this.player.anims.play('walk',true);
+              this.player.x+=2;
+            }
+          } else if (this.cursors.left.isDown) {
+            if(!this.playerCollides(this.player.body.x-4,this.player.body.y)) {
+              this.player.anims.play('walk',true);
+              this.player.x-=2;
+            }
+          } else {
+            this.player.anims.play('idle',true);
           }
-        } else if (this.cursors.up.isDown) {
-          if(!this.playerCollides(this.player.body.x,this.player.body.y-4)) {
-            this.player.anims.play('reverse',true);
-            this.player.y-=2;
-          }
-        } else if (this.cursors.right.isDown) {
-          if(!this.playerCollides(this.player.body.x+4,this.player.body.y)) {
-            this.player.anims.play('walk',true);
-            this.player.x+=2;
-          }
-        } else if (this.cursors.left.isDown) {
-          if(!this.playerCollides(this.player.body.x-4,this.player.body.y)) {
-            this.player.anims.play('walk',true);
-            this.player.x-=2;
-          }
+          this.zombiegroup.children.entries.forEach(zombie => this.zombieEatPlayer(zombie));
         } else {
-          this.player.anims.play('idle',true);
+          if(!this.playingDeathSeq) {
+            this.playingDeathSeq = true;
+            this.player.anims.play('death',true);
+            this.registry.values.lives--;
+            if (this.registry.values.lives != -1) {
+              this.livesTxt.setText('Lives: ' +  this.registry.values.lives);
+            }
+          }
         }
-        this.zombiegroup.children.entries.forEach(zombie => this.zombieEatPlayer(zombie));
-      } else {
-        if(!this.playingDeathSeq) {
-          this.playingDeathSeq = true;
-          this.player.anims.play('death',true);
-          this.registry.values.lives--;
-          if (this.registry.values.lives != -1) {
-            this.livesTxt.setText('Lives: ' +  this.registry.values.lives);
+        //Get the active icon area and check for overlap
+        if(!this.levelComplete) {
+          var iconarea = new Phaser.Geom.Rectangle(this.activeSprite.x-16,this.activeSprite.y-16, 32, 32);
+          if (iconarea.contains(this.player.x,this.player.y)) {
+            if(this.activeSprite.collectOrder != 6) {
+              var nextSprite = this.activeSprite.collectOrder;
+
+              //Score text
+              this.score += this.activeSprite.points;
+              this.scoreTxt.setText('Score: '+this.score);
+              this.points.setText(this.activeSprite.points);
+              this.points.setPosition(this.activeSprite.x, this.activeSprite.y-16);
+              this.points.setVisible(true);
+              this.activeSprite.destroy();
+              console.log(nextSprite);
+              console.log(this.icongroup.children.entries);
+              this.activeSprite = this.icongroup.children.entries.filter(icon => icon.collectOrder == nextSprite+1)[0];
+              console.log(this.activeSprite);
+              this.activeSprite.setVisible(true);
+              this.activeSprite.setActive(true);
+            } else {
+              this.levelComplete = true;
+              this.score += this.activeSprite.points;
+              this.scoreTxt.setText('Score: '+this.score);
+              this.points.setText(this.activeSprite.points);
+              this.points.setPosition(this.activeSprite.x, this.activeSprite.y-16);
+              this.points.setVisible(true);
+              this.activeSprite.destroy();
+              //Scene Transition
+              this.gameMessage = "Level " + this.level + " Complete";
+              this.messageTxt.setText(this.gameMessage).setOrigin(0.5);
+              this.messageTxt.setPosition(400, 300);
+              this.messageTxt.setVisible(true);
+              this.levelCompleteTimer = this.time.addEvent({
+                delay: 3000,
+                callback: function() {
+                  //go to next level
+                  this.registry.set('score',this.score);
+                  this.registry.set('level',this.level+1);
+                  //this.load.start();
+                  this.scene.restart();
+                },
+                callbackScope: this,
+                loop: false
+              });
+            }
           }
         }
       }
 
-      //Get the active icon area and check for overlap
-      if(!this.levelComplete) {
-        var iconarea = new Phaser.Geom.Rectangle(this.activeSprite.x-16,this.activeSprite.y-16, 32, 32);
-        if (iconarea.contains(this.player.x,this.player.y)) {
-          if(this.activeSprite.collectOrder != 6) {
-            var nextSprite = this.activeSprite.collectOrder;
 
-            //Score text
-            this.score += this.activeSprite.points;
-            this.scoreTxt.setText('Score: '+this.score);
-            this.points.setText(this.activeSprite.points);
-            this.points.setPosition(this.activeSprite.x, this.activeSprite.y-16);
-            this.points.setVisible(true);
-            this.activeSprite.destroy();
-            console.log(nextSprite);
-            console.log(this.icongroup.children.entries);
-            this.activeSprite = this.icongroup.children.entries.filter(icon => icon.collectOrder == nextSprite+1)[0];
-            console.log(this.activeSprite);
-            this.activeSprite.setVisible(true);
-            this.activeSprite.setActive(true);
-          } else {
-            this.levelComplete = true;
-            this.score += this.activeSprite.points;
-            this.scoreTxt.setText('Score: '+this.score);
-            this.points.setText(this.activeSprite.points);
-            this.points.setPosition(this.activeSprite.x, this.activeSprite.y-16);
-            this.points.setVisible(true);
-            this.activeSprite.destroy();
-            //Scene Transition
-            this.gameMessage = "Level " + this.level + " Complete";
-            this.messageTxt.setText(this.gameMessage).setOrigin(0.5);
-            this.messageTxt.setPosition(400, 300);
-            this.messageTxt.setVisible(true);
-            this.levelCompleteTimer = this.time.addEvent({
-              delay: 3000,
-              callback: function() {
-                //go to next level
-                this.registry.set('score',this.score);
-                this.registry.set('level',this.level+1);
-                //this.load.start();
-                this.scene.restart();
-              },
-              callbackScope: this,
-              loop: false
-            });
-          }
-        }
-      }*/
 
       //this.graphics.clear();
       //this.graphics.fillRectShape(iconarea);
   },
 
   createPlayer: function (player) {
-    if(player.playerNo == 1) {
-      // create the player sprite
-      var playerLayer = this.map.getObjectLayer('player')['objects'];
-      this.player = this.physics.add.sprite(playerLayer[0].x+16, playerLayer[0].y-16, 'player',0);
-      this.player.setCollideWorldBounds(true); // don't go out of the map
-      this.player.body.setAllowGravity(false);
-      this.player.dead = false;
-
-      // small fix to our player images, we resize the physics body object slightly
-      this.player.body.setSize(this.player.width-8, this.player.height-8 );
-
-      // player animations
-      this.anims.create({
-          key: 'walk',
-          frames: this.anims.generateFrameNames('player', {prefix: 'man ',suffix: '.aseprite', start: 0, end: 11}),
-          frameRate: 10,
-          repeat: -1
-      });
-      this.anims.create({
-          key: 'reverse',
-          frames: this.anims.generateFrameNames('player', {prefix: 'man ',suffix: '.aseprite', start: 12, end: 23}),
-          frameRate: 10,
-          repeat: -1
-      });
-      this.anims.create({
-          key: 'idle',
-          frames: this.anims.generateFrameNames('player', {prefix: 'man ',suffix: '.aseprite', start: 11, end: 11}),
-          frameRate: 10,
-          repeat: -1
-      });
-      this.anims.create({
-          key: 'death',
-          frames: this.anims.generateFrameNames('player', {prefix: 'man ',suffix: '.aseprite', start: 48, end: 56}),
-          frameRate: 10,
-          repeat: 0
-      });
-      this.player.playerId = player.playerId
-    } else {
-      //create player two
-      // create the player sprite
-      var playerLayer = this.map.getObjectLayer('player2')['objects'];
-      this.player2 = this.physics.add.sprite(playerLayer[0].x+16, playerLayer[0].y-16, 'player',0);
-      this.player2.setCollideWorldBounds(true); // don't go out of the map
-      this.player2.body.setAllowGravity(false);
-      this.player2.dead = false;
-
-      // small fix to our player images, we resize the physics body object slightly
-      this.player2.body.setSize(this.player2.width-8, this.player2.height-8 );
-
-      // player animations
-      this.anims.create({
-          key: 'walk',
-          frames: this.anims.generateFrameNames('player2', {prefix: 'player2 ',suffix: '.aseprite', start: 0, end: 11}),
-          frameRate: 10,
-          repeat: -1
-      });
-      this.anims.create({
-          key: 'reverse',
-          frames: this.anims.generateFrameNames('player2', {prefix: 'player2 ',suffix: '.aseprite', start: 12, end: 23}),
-          frameRate: 10,
-          repeat: -1
-      });
-      this.anims.create({
-          key: 'idle',
-          frames: this.anims.generateFrameNames('player2', {prefix: 'player2 ',suffix: '.aseprite', start: 11, end: 11}),
-          frameRate: 10,
-          repeat: -1
-      });
-      this.anims.create({
-          key: 'death',
-          frames: this.anims.generateFrameNames('player2', {prefix: 'man ',suffix: '.aseprite', start: 24, end: 32}),
-          frameRate: 10,
-          repeat: 0
-      });
-      this.player2.playerId = player.playerId
-    }
+    alert(player);
   },
 
   moveZombie: function (zombie) {
