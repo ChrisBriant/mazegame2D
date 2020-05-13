@@ -82,12 +82,26 @@ export default new Phaser.Class({
         });*/
       });
 
+      //Capture the other player's movement
+      /*
+      this.socket.on('opponentmove', function (movementData) {
+        sc.player2.body.x = movementData.x;
+        sc.player2.body.y = movementData.y;
+      });*/
+
+      this.socket.on('opponentmove', movementData =>  {
+        this.moveOtherPlayer(movementData.x,movementData.y);
+        //sc.player2.body.x = movementData.x;
+        //sc.player2.body.y = movementData.y;
+      });
+
       //this.socket.emit('playerMovement', { x: 28, y: 92, rotation: 44 });
       this.level = this.registry.values.level;
       this.score = this.registry.values.score;
       this.gameMessage = "";
       this.levelComplete = false;
       this.playingDeathSeq = false;
+      this.invincible = true;
 
       // load the map
       this.map = this.make.tilemap({key: 'map' + this.level});
@@ -95,17 +109,20 @@ export default new Phaser.Class({
       this.cameras.main.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
 
       this.paired = false;
-      var paired = this.paired;
+      //var paired = this.paired;
       this.player;
       this.player2;
-      var player = this.player;
-      var player2 = this.player2;
-      var scenePhysics = this.physics;
-      var map = this.map;
-      var sceneCameras = this.cameras;
+      //var player = this.player;
+      //var player2 = this.player2;
+      //var scenePhysics = this.physics;
+      //var map = this.map;
+      //var sceneCameras = this.cameras;
       var sc = this;
 
       this.socket.on('pair', function (pair) {
+        //For server
+        var zombieData = {'playerId':socket_ID,'zombies':[]};
+        
         if(!sc.paired) {
             alert(JSON.stringify(pair));
             sc.paired = true;
@@ -121,29 +138,66 @@ export default new Phaser.Class({
             if(me.playerNo == 1) {
               alert("I am 1");
               // create the player sprite
-              var playerLayer = map.getObjectLayer('player')['objects'];
-              var player2Layer = map.getObjectLayer('player2')['objects'];
-              player = scenePhysics.add.sprite(playerLayer[0].x+16, playerLayer[0].y-16, 'player',0);
-              player2 = scenePhysics.add.sprite(player2Layer[0].x+16, player2Layer[0].y-16, 'player2',0);
+              var playerLayer = sc.map.getObjectLayer('player')['objects'];
+              var player2Layer = sc.map.getObjectLayer('player2')['objects'];
+              sc.player = sc.physics.add.sprite(playerLayer[0].x+16, playerLayer[0].y-16, 'player',0);
+              sc.player2 = sc.physics.add.sprite(player2Layer[0].x+16, player2Layer[0].y-16, 'player2',0);
             } else {
               alert("I am 2");
-              var playerLayer = map.getObjectLayer('player2')['objects'];
-              var player2Layer = map.getObjectLayer('player')['objects'];
-              player = scenePhysics.add.sprite(playerLayer[0].x+16, playerLayer[0].y-16, 'player2',0);
-              player2 = scenePhysics.add.sprite(player2Layer[0].x+16, player2Layer[0].y-16, 'player',0);
+              var playerLayer = sc.map.getObjectLayer('player2')['objects'];
+              var player2Layer = sc.map.getObjectLayer('player')['objects'];
+              sc.player = sc.physics.add.sprite(playerLayer[0].x+16, playerLayer[0].y-16, 'player2',0);
+              sc.player2 = sc.physics.add.sprite(player2Layer[0].x+16, player2Layer[0].y-16, 'player',0);
             }
-            player.setCollideWorldBounds(true); // don't go out of the map
-            player.body.setAllowGravity(false);
-            player2.body.setAllowGravity(false);
-            player.dead = false;
+            sc.player.setCollideWorldBounds(true); // don't go out of the map
+            sc.player.body.setAllowGravity(false);
+            sc.player2.body.setAllowGravity(false);
+            sc.player.dead = false;
 
             // small fix to our player images, we resize the physics body object slightly
-            player.body.setSize(player.width-8, player.height-8 );
-            player2.body.setSize(player.width-8, player.height-8 );
+            sc.player.body.setSize(sc.player.width-8, sc.player.height-8 );
+            sc.player2.body.setSize(sc.player.width-8, sc.player.height-8 );
             // make the camera follow the player
-            sceneCameras.main.startFollow(player);
-            player.playerId = me.playerId
+            sc.cameras.main.startFollow(sc.player);
+            sc.player.playerId = me.playerId
+            sc.player.playerNo = me.playerNo
+            sc.player.otherId = me.otherPlayer
+
+            var zombies = sc.map.getObjectLayer('zombie')['objects'];
+            sc.zombiegroup = sc.physics.add.group();
+
+
+            var zombieIdx = 0;
+            //zombieData.push();
+
+            zombies.forEach(zombie => {
+              var zombiesprite = sc.zombiegroup.create(zombie.x+16, zombie.y-16, 'player');
+              zombiesprite.body.setAllowGravity(false);
+              zombiesprite.visitedTiles = [];
+              zombiesprite.trackingId = zombieIdx;
+              zombieIdx++;
+              zombieData.zombies.push({'id':zombieIdx,'x':zombiesprite.x,'y':zombiesprite.y});
+            });
+            //Send positions to server
+
+            //this.emit('zombiestart',zombieData);
+            //Zombie animations
+            sc.anims.create({
+                key: 'zwalk',
+                frames: sc.anims.generateFrameNames('player', {prefix: 'man ',suffix: '.aseprite', start: 24, end: 35}),
+                frameRate: 10,
+                repeat: -1
+            });
+            sc.anims.create({
+                key: 'zreverse',
+                frames: sc.anims.generateFrameNames('player', {prefix: 'man ',suffix: '.aseprite', start: 36, end: 47}),
+                frameRate: 10,
+                repeat: -1
+            });
+
+            sc.zombiegroup.playAnimation('zwalk');
         }
+        this.emit("zombiestart",zombieData);
       });
 
       //this.socket.on('otherplayer', function (other) {
@@ -198,7 +252,7 @@ export default new Phaser.Class({
       });
       this.anims.create({
           key: 'p2death',
-          frames: this.anims.generateFrameNames('player2', {prefix: 'man ',suffix: '.aseprite', start: 24, end: 32}),
+          frames: this.anims.generateFrameNames('player2', {prefix: 'player2 ',suffix: '.aseprite', start: 24, end: 32}),
           frameRate: 10,
           repeat: 0
       });
@@ -266,32 +320,9 @@ export default new Phaser.Class({
       */
       console.log(this.activeSprite);
 
-      var zombies = this.map.getObjectLayer('zombie')['objects'];
-      this.zombiegroup = this.physics.add.group();
-
-      zombies.forEach(zombie => {
-        var zombiesprite = this.zombiegroup.create(zombie.x+16, zombie.y-16, 'player');
-        zombiesprite.body.setAllowGravity(false);
-        zombiesprite.visitedTiles = [];
-      });
-
-      //Zombie animations
-      this.anims.create({
-          key: 'zwalk',
-          frames: this.anims.generateFrameNames('player', {prefix: 'man ',suffix: '.aseprite', start: 24, end: 35}),
-          frameRate: 10,
-          repeat: -1
-      });
-      this.anims.create({
-          key: 'zreverse',
-          frames: this.anims.generateFrameNames('player', {prefix: 'man ',suffix: '.aseprite', start: 36, end: 47}),
-          frameRate: 10,
-          repeat: -1
-      });
 
 
-      this.zombiegroup.playAnimation('zwalk');
-
+      /*
       this.timer = this.time.addEvent({
         delay: 500,
         callback: function() {
@@ -300,7 +331,7 @@ export default new Phaser.Class({
         },
         callbackScope: this,
         loop: true
-       });
+      });*/
 
       this.cursors = this.input.keyboard.createCursorKeys();
 
@@ -375,37 +406,63 @@ export default new Phaser.Class({
 
 
       if(this.paired) {
-        alert("PAIRED");
         if(!this.player.dead) {
           if (this.cursors.down.isDown)
           {
             if(!this.playerCollides(this.player.body.x,this.player.body.y+4)) {
-              this.player.anims.play('walk',true);
+              if(this.player.playerNo == 1) {
+                this.player.anims.play('walk',true);
+              } else {
+                this.player.anims.play('p2walk',true);
+              }
               this.player.y+=2;
             }
           } else if (this.cursors.up.isDown) {
             if(!this.playerCollides(this.player.body.x,this.player.body.y-4)) {
-              this.player.anims.play('reverse',true);
+              if(this.player.playerNo == 1) {
+                this.player.anims.play('reverse',true);
+              } else {
+                this.player.anims.play('p2reverse',true);
+              }
               this.player.y-=2;
             }
           } else if (this.cursors.right.isDown) {
             if(!this.playerCollides(this.player.body.x+4,this.player.body.y)) {
-              this.player.anims.play('walk',true);
+              if(this.player.playerNo == 1) {
+                this.player.anims.play('walk',true);
+              } else {
+                this.player.anims.play('p2walk',true);
+              }
               this.player.x+=2;
             }
           } else if (this.cursors.left.isDown) {
             if(!this.playerCollides(this.player.body.x-4,this.player.body.y)) {
-              this.player.anims.play('walk',true);
+              if(this.player.playerNo == 1) {
+                this.player.anims.play('walk',true);
+              } else {
+                this.player.anims.play('p2walk',true);
+              }
               this.player.x-=2;
             }
           } else {
-            this.player.anims.play('idle',true);
+            if(this.player.playerNo == 1) {
+              this.player.anims.play('idle',true);
+            } else {
+              this.player.anims.play('p2idle',true);
+            }
           }
+          //Send movement to server
+          this.socket.emit('movement', {'x':this.player.x,'y':this.player.y,'id':this.player.playerId,'otherId':this.player.otherId});
+          //Detect Zombie killing player
           this.zombiegroup.children.entries.forEach(zombie => this.zombieEatPlayer(zombie));
         } else {
           if(!this.playingDeathSeq) {
             this.playingDeathSeq = true;
-            this.player.anims.play('death',true);
+            if(this.player.playerNo == 1) {
+              this.player.anims.play('death',true);
+            } else {
+              this.player.anims.play('p2death',true);
+            }
             this.registry.values.lives--;
             if (this.registry.values.lives != -1) {
               this.livesTxt.setText('Lives: ' +  this.registry.values.lives);
@@ -495,6 +552,15 @@ export default new Phaser.Class({
 
   },
 
+  moveOtherPlayer: function (x,y) {
+    //console.log(x)
+    //console.log(this.player.body.x);
+    this.player2.x = x-16;
+    this.player2.y = y-16;
+    //this.player2.body.x = 300;
+    //this.player2.body.y = 200;
+  },
+
   playerCollides: function (x,y) {
     var rect = new Phaser.Geom.Rectangle(x, y, 24, 24);
     var tiles = this.shelves.getTilesWithinShape(rect);
@@ -510,7 +576,7 @@ export default new Phaser.Class({
 
   zombieEatPlayer: function(zombie) {
     var deathRect = new Phaser.Geom.Rectangle(this.player.body.x, this.player.body.y, 32, 32);
-    if(deathRect.contains(zombie.x,zombie.y) && !this.player.dead) {
+    if(deathRect.contains(zombie.x,zombie.y) && !this.player.dead && !this.player.invincible) {
       console.log("Player Died");
       this.player.dead = true;
 
