@@ -93,7 +93,7 @@ io.on('connection', function (socket) {
   	player.player.pairId = pairId;
   	otherPlayer.pairId = pairId;
   	//Add to the pair array and then send the signal to the client that the pair is ready
-  	pairs.push({'pairId':pairId,'playerId':player.player.playerId},{'pairId':pairId,'playerId':otherPlayer.playerId});
+  	pairs.push({'pairId':pairId,'playerId':player.player.playerId, 'otherId':otherPlayer.playerId});
   	pairId++;
   	io.to(player.player.playerId).emit('pair',pair);
   	io.to(otherPlayer.playerId).emit('pair',pair);
@@ -122,8 +122,9 @@ io.on('connection', function (socket) {
   socket.on('zombiestart', function (zombies) {
   	console.log("zombieStart");
   	zombieData.push(zombies);
-  	var playerInPair = pairs.filter(p => p.pairId == zombies.pairId)[0];
-  	console.log(playerInPair.playerId); 
+  	console.log(zombies);
+  	//var playerInPair = pairs.filter(p => p.pairId == zombies.pairId)[0];
+  	//console.log(playerInPair.playerId); 
   	/*
   	setInterval(function() {
   		//console.log(zombieData);
@@ -149,3 +150,39 @@ io.on('connection', function (socket) {
 server.listen(8081, function () {
   console.log(`Listening on ${server.address().port}`);
 });
+
+//Regularly update ZombieMovement
+setInterval(function() {
+  	//console.log(zombieData);
+  	for(var i=0;i<zombieData.length;i++) {
+  		var zombies = zombieData[i].zombies
+  		for(var j=0;j<zombies.length;j++) {
+  			var tiles = getAdjacentTiles(zombies[i].x,zombies[i].y,zombies[i].map);
+  			console.log(tiles);
+  		}
+
+  	}
+  	//console.log("timer triggered");
+}, 500);
+
+
+function getAdjacentTiles(x,y,map) {
+	adjacentTiles = [];
+	for(vari=0;i<map.length) {
+		//Filter each column
+		var left = map[i].filter(col => col.x-32 == x && col.y == y);
+		var right = map[i].filter(col => col.x+32 == x && col.y == y);
+		var up = map[i].filter(col => col.x == x && col.y+32 == y);
+		var down = map[i].filter(col => col.x == x && col.y-32 == y);
+		if(left.length > 0) {
+			adjacentTiles.push(left);
+		} else if (right.length > 0) {
+			adjacentTiles.push(right);
+		} else if (up.length > 0) {
+			adjacentTiles.push(right);
+		} else if (down.length > 0) {
+			adjacentTiles.push(right);
+		}
+	}
+	return adjacentTiles;
+}

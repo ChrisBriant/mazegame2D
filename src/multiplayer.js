@@ -102,11 +102,6 @@ export default new Phaser.Class({
       this.playingDeathSeq = false;
       this.invincible = true;
 
-      // load the map
-      this.map = this.make.tilemap({key: 'map' + this.level});
-
-      this.cameras.main.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
-
       this.paired = false;
       //var paired = this.paired;
       this.player;
@@ -118,9 +113,41 @@ export default new Phaser.Class({
       //var sceneCameras = this.cameras;
       var sc = this;
 
+      // load the map
+      this.map = this.make.tilemap({key: 'map' + this.level});
+      var levelTiles = this.map.addTilesetImage('tilemap');
+
+      this.cameras.main.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
+
+
+      this.floor = this.map.createDynamicLayer('floor', levelTiles, 0, 0);
+      // create the shelves layer
+      this.shelves = this.map.createDynamicLayer('walls', levelTiles, 0, 0);
+      console.log("shelves");
+      console.log(this.shelves);
+      // the player will collide with this layer
+      this.shelves.setCollisionByExclusion([-1]);
+
+      //Get a representation of the map for the server
+      var tileMapX = 16;
+      var row = [];
+      for(var i=0;i<25;i++) {
+        var col = []
+        var tileMapY = 16;
+
+        for(var j=0;j<18;j++){
+          var idx = this.shelves.getTileAtWorldXY(tileMapX,tileMapY,true).index;
+          col.push({'idx':idx, 'x':tileMapX,'y':tileMapY});
+          tileMapY += 32;
+        }
+        row.push(col);
+        tileMapX += 32;
+      }
+      console.log(row);
+
       this.socket.on('pair', function (pair) {
         //For server
-        var zombieData = {'playerId':socket_ID,'zombies':[],'pairId':pair[0].pairId};
+        var zombieData = {'playerId':socket_ID,'zombies':[],'pairId':pair[0].pairId,'map':sc.shelves};
         //Send the tilemaps to the server
         if(!sc.paired) {
             //alert(JSON.stringify(pair));
@@ -268,15 +295,11 @@ export default new Phaser.Class({
       });
 
       // tiles for the ground layer
-      var levelTiles = this.map.addTilesetImage('tilemap');
+
       //var iconTiles = this.map.addTilesetImage('icons');
 
       //world layer
-      this.floor = this.map.createDynamicLayer('floor', levelTiles, 0, 0);
-      // create the shelves layer
-      this.shelves = this.map.createDynamicLayer('walls', levelTiles, 0, 0);
-      // the player will collide with this layer
-      this.shelves.setCollisionByExclusion([-1]);
+
 
 
 
