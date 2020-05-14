@@ -5,7 +5,7 @@ var io = require('socket.io').listen(server);
 var cors = require('cors');
 
 var players_OLD = {};
-var players = []
+var players = [];
 /*
 var star = {
   x: Math.floor(Math.random() * 700) + 50,
@@ -16,7 +16,8 @@ var scores = {
   red: 0
 };*/
 var zombieData = [];
-
+var pairId = 0;
+var pairs = [];
 
 app.use(express.static(__dirname + '/public'));
 app.use(cors());
@@ -81,12 +82,19 @@ io.on('connection', function (socket) {
   // when players are paired, notify the players it is ready
   socket.on('player2Ready', function (player) {
   	console.log("paired");
+  	
   	var pair = [];
   	//pair.push(players.filter(p => p.playerId == player.otherPlayer)[0]);
   	//pair.push(player);
   	var otherPlayer = players.filter(p => p.playerId === player.player.otherPlayer)[0];
   	pair.push(player.player);
   	pair.push(otherPlayer);
+  	//Assign a pair ID
+  	player.player.pairId = pairId;
+  	otherPlayer.pairId = pairId;
+  	//Add to the pair array and then send the signal to the client that the pair is ready
+  	pairs.push({'pairId':pairId,'playerId':player.player.playerId},{'pairId':pairId,'playerId':otherPlayer.playerId});
+  	pairId++;
   	io.to(player.player.playerId).emit('pair',pair);
   	io.to(otherPlayer.playerId).emit('pair',pair);
   	//io.to(player.player.playerId).emit('pair',player.player);
@@ -113,13 +121,26 @@ io.on('connection', function (socket) {
   //Initialize zombie positions
   socket.on('zombiestart', function (zombies) {
   	console.log("zombieStart");
-  	zombieData = zombies;
+  	zombieData.push(zombies);
+  	var playerInPair = pairs.filter(p => p.pairId == zombies.pairId)[0];
+  	console.log(playerInPair.playerId); 
+  	/*
   	setInterval(function() {
-  		zombieData.forEach(z => function() {
-  			console.log(z);
-  		});
-  		console.log("timer triggered");
+  		//console.log(zombieData);
+  		for(var i=0;i<zombieData.length;i++) {
+  			console.log(zombieData[i]);
+  			var zombieList = zombieData[i].zombies
+  			if(zombieData[i].pairId == playerInPair.pairId) {
+  				//console.log(playerInPair.playerId);
+  				for(var j=0;j<zombieList.length;i++) {
+  					//socket.broadcast.emit('zombieRequestTiles', players[socket.id]);
+  					socket.to(playerInPair.playerId).emit('zombieRequestTiles',zombieList);
+  				}
+  			}
+  		}
+  		//console.log("timer triggered");
   	}, 500);
+  	*/
   });  	
 
   

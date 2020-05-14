@@ -42,7 +42,6 @@ export default new Phaser.Class({
      var playerNo = 0;
 
      this.socket.on('socketID', function (socketID) {
-       //alert(socketID);
        console.log(socketID);
        socket_ID= socketID;
      });
@@ -69,7 +68,6 @@ export default new Phaser.Class({
         console.log("Player");
         console.log(player);
         if(player.playerNo == 2) {
-          //alert("I am player 2");
           this.emit('player2Ready', { player });
         }
         /*
@@ -90,6 +88,7 @@ export default new Phaser.Class({
       });*/
 
       this.socket.on('opponentmove', movementData =>  {
+        //alert("Here");
         this.moveOtherPlayer(movementData.x,movementData.y);
         //sc.player2.body.x = movementData.x;
         //sc.player2.body.y = movementData.y;
@@ -121,10 +120,10 @@ export default new Phaser.Class({
 
       this.socket.on('pair', function (pair) {
         //For server
-        var zombieData = {'playerId':socket_ID,'zombies':[]};
-        
+        var zombieData = {'playerId':socket_ID,'zombies':[],'pairId':pair[0].pairId};
+        //Send the tilemaps to the server
         if(!sc.paired) {
-            alert(JSON.stringify(pair));
+            //alert(JSON.stringify(pair));
             sc.paired = true;
             // set bounds so the camera won't go outside the game world
             if(pair[0].playerId == socket_ID) {
@@ -136,14 +135,14 @@ export default new Phaser.Class({
             }
 
             if(me.playerNo == 1) {
-              alert("I am 1");
+              //alert("I am 1");
               // create the player sprite
               var playerLayer = sc.map.getObjectLayer('player')['objects'];
               var player2Layer = sc.map.getObjectLayer('player2')['objects'];
               sc.player = sc.physics.add.sprite(playerLayer[0].x+16, playerLayer[0].y-16, 'player',0);
               sc.player2 = sc.physics.add.sprite(player2Layer[0].x+16, player2Layer[0].y-16, 'player2',0);
             } else {
-              alert("I am 2");
+              //alert("I am 2");
               var playerLayer = sc.map.getObjectLayer('player2')['objects'];
               var player2Layer = sc.map.getObjectLayer('player')['objects'];
               sc.player = sc.physics.add.sprite(playerLayer[0].x+16, playerLayer[0].y-16, 'player2',0);
@@ -159,50 +158,61 @@ export default new Phaser.Class({
             sc.player2.body.setSize(sc.player.width-8, sc.player.height-8 );
             // make the camera follow the player
             sc.cameras.main.startFollow(sc.player);
-            sc.player.playerId = me.playerId
-            sc.player.playerNo = me.playerNo
-            sc.player.otherId = me.otherPlayer
+            sc.player.playerId = me.playerId;
+            sc.player.playerNo = me.playerNo;
+            sc.player.otherId = me.otherPlayer;
+            sc.player.pairId = me.pairId;
 
-            var zombies = sc.map.getObjectLayer('zombie')['objects'];
-            sc.zombiegroup = sc.physics.add.group();
-
-
-            var zombieIdx = 0;
-            //zombieData.push();
-
-            zombies.forEach(zombie => {
-              var zombiesprite = sc.zombiegroup.create(zombie.x+16, zombie.y-16, 'player');
-              zombiesprite.body.setAllowGravity(false);
-              zombiesprite.visitedTiles = [];
-              zombiesprite.trackingId = zombieIdx;
-              zombieIdx++;
-              zombieData.zombies.push({'id':zombieIdx,'x':zombiesprite.x,'y':zombiesprite.y});
-            });
             //Send positions to server
 
             //this.emit('zombiestart',zombieData);
-            //Zombie animations
-            sc.anims.create({
-                key: 'zwalk',
-                frames: sc.anims.generateFrameNames('player', {prefix: 'man ',suffix: '.aseprite', start: 24, end: 35}),
-                frameRate: 10,
-                repeat: -1
-            });
-            sc.anims.create({
-                key: 'zreverse',
-                frames: sc.anims.generateFrameNames('player', {prefix: 'man ',suffix: '.aseprite', start: 36, end: 47}),
-                frameRate: 10,
-                repeat: -1
-            });
-
-            sc.zombiegroup.playAnimation('zwalk');
+;
         }
+        var zombies = sc.map.getObjectLayer('zombie')['objects'];
+        sc.zombiegroup = sc.physics.add.group();
+
+
+        var zombieIdx = 0;
+        //zombieData.push();
+
+        zombies.forEach(zombie => {
+          var zombiesprite = sc.zombiegroup.create(zombie.x+16, zombie.y-16, 'player');
+          zombiesprite.body.setAllowGravity(false);
+          zombiesprite.visitedTiles = [];
+          zombiesprite.trackingId = zombieIdx;
+          zombieIdx++;
+          zombieData.zombies.push({'id':zombieIdx,'x':zombiesprite.x,'y':zombiesprite.y});
+        });
+        //Zombie animations
+        sc.anims.create({
+            key: 'zwalk',
+            frames: sc.anims.generateFrameNames('player', {prefix: 'man ',suffix: '.aseprite', start: 24, end: 35}),
+            frameRate: 10,
+            repeat: -1
+        });
+        sc.anims.create({
+            key: 'zreverse',
+            frames: sc.anims.generateFrameNames('player', {prefix: 'man ',suffix: '.aseprite', start: 36, end: 47}),
+            frameRate: 10,
+            repeat: -1
+        });
+
+        sc.zombiegroup.playAnimation('zwalk');
         this.emit("zombiestart",zombieData);
+        /*
+        sc.socket.on('zombieRequestTiles', z => {
+          alert("Here");
+          this.sendTilesToServer(z);
+        });*/
       });
 
       //this.socket.on('otherplayer', function (other) {
       //});
 
+
+      this.socket.on('zombieRequestTiles', z => {
+        this.sendTilesToServer(z);
+      });
 
 
       // player animations
@@ -572,6 +582,19 @@ export default new Phaser.Class({
     } else {
       return false;
     }
+  },
+
+  sendTilesToServer: function(z) {
+    //console.log("Here");
+    //console.log(z[0].x);
+    var adjacentTiles = [];
+    //var zombieForTiles = this.zombiegroup.children.entries.filter(zombie => zombie.trackingId == z.id );
+    //console.log(this.shelves);
+    adjacentTiles[0] = this.shelves.getTileAtWorldXY(z[0].x,z[0].y+32,true);
+    adjacentTiles[1] = this.shelves.getTileAtWorldXY(z[0].x,z[0].y-32,true);
+    adjacentTiles[2] = this.shelves.getTileAtWorldXY(z[0].x+32,z[0].y,true);
+    adjacentTiles[3] = this.shelves.getTileAtWorldXY(z[0].x-32,z[0].y,true);
+    //console.log(adjacentTiles);
   },
 
   zombieEatPlayer: function(zombie) {
