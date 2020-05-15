@@ -18,6 +18,7 @@ var scores = {
 var zombieData = [];
 var pairId = 0;
 var pairs = [];
+var iconGroups = [];
 
 app.use(express.static(__dirname + '/public'));
 app.use(cors());
@@ -84,11 +85,11 @@ io.on('connection', function (socket) {
     // emit a message to all players to remove this player
     io.emit('disconnect', socket.id);
   });
-  
+
   // when players are paired, notify the players it is ready
   socket.on('player2Ready', function (player) {
   	console.log("paired");
-  	
+
   	var pair = [];
   	//pair.push(players.filter(p => p.playerId == player.otherPlayer)[0]);
   	//pair.push(player);
@@ -99,7 +100,7 @@ io.on('connection', function (socket) {
   	player.player.pairId = pairId;
   	otherPlayer.pairId = pairId;
   	//Add to the pair array and then send the signal to the client that the pair is ready
-  	pairs.push({'pairId':pairId,'playerId':player.player.playerId, 'otherId':otherPlayer.playerId});
+  	pairs.push({'pairId':pairId,'playerId':player.player.playerId,'playerScore':0,'playerLives':3,'otherId':otherPlayer.playerId,'otherScore':0,'otherLives':3});
   	pairId++;
   	io.to(player.player.playerId).emit('pair',pair);
   	io.to(otherPlayer.playerId).emit('pair',pair);
@@ -118,7 +119,7 @@ io.on('connection', function (socket) {
     // emit a message to all players about the player that moved
     socket.broadcast.emit('playerMoved', players[socket.id]);
   });*/
-  
+
     // when a player moves, update the player data
   socket.on('movement', function (movementData) {
   	console.log("Moving");
@@ -127,14 +128,13 @@ io.on('connection', function (socket) {
   	io.to(movementData.otherId).emit('opponentmove',movementData,zombies[0].zombies);
   	io.to(movementData.playerId).emit('opponentmove',movementData,zombies[0].zombies);
   });
-  
+
   //Initialize zombie positions
   socket.on('zombiestart', function (zombies) {
   	console.log("zombieStart");
   	zombieData.push(zombies);
-  	console.log(zombies);
   	//var playerInPair = pairs.filter(p => p.pairId == zombies.pairId)[0];
-  	//console.log(playerInPair.playerId); 
+  	//console.log(playerInPair.playerId);
   	/*
   	setInterval(function() {
   		//console.log(zombieData);
@@ -152,9 +152,24 @@ io.on('connection', function (socket) {
   		//console.log("timer triggered");
   	}, 500);
   	*/
-  });  	
+  });
 
-  
+  socket.on('sendicons', function(icons) {
+  	iconGroups.push(icons);
+  });
+
+  socket.on('collected', function(pairId,playerId,icon) {
+  	//Update score
+  	var iconGr = iconGroups.filter(ig => ig.pairId == pairId);
+  	var icon = iconGr.icons[icon];
+  	var pair = pairs.filter(p => p.pairId == pairId)[0];
+  	if(pair.playerId == playerId) {
+  		pair.playerScore += icon.points;
+  		icon.collected = true;
+  	}
+  });
+
+
 });
 
 server.listen(8081, function () {
