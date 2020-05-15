@@ -90,8 +90,26 @@ export default new Phaser.Class({
 
 
       this.socket.on('opponentmove', (movementData,zombies) =>  {
-        //alert("Here");
-        this.moveOtherPlayer(movementData.x,movementData.y);
+        console.log("Move");
+        console.log(movementData);
+        console.log(socket_ID);
+        if(movementData.otherId == socket_ID) {
+          this.moveOtherPlayer(movementData.x,movementData.y);
+          //Opponent animations
+          if(this.movementData.direction == "UP")
+            if(this.player.playerNo == 1) {
+              this.player2.anims.play('p2reverse',true);
+            } else {
+              this.player2.anims.play('reverse',true);
+            }
+          else {
+            if(this.player.playerNo == 1) {
+              this.player2.anims.play('p2walk',true);
+            } else {
+              this.player2.anims.play('walk',true);
+            }
+          }
+        }
 
         //Move zombies
         console.log("Zombies");
@@ -118,6 +136,7 @@ export default new Phaser.Class({
       this.levelComplete = false;
       this.playingDeathSeq = false;
       this.invincible = true;
+      this.currentDirection = "ST";
 
       this.paired = false;
       //var paired = this.paired;
@@ -252,7 +271,7 @@ export default new Phaser.Class({
         sc.moveTimer = sc.time.addEvent({
           delay: 100,
           callback: function() {
-            this.emit('movement', {'x':sc.player.x,'y':sc.player.y,'id':sc.player.playerId,'otherId':sc.player.otherId,'pairId':sc.player.pairId});
+            this.emit('movement', {'x':sc.player.x,'y':sc.player.y,'id':sc.player.playerId,'otherId':sc.player.otherId,'pairId':sc.player.pairId,'direction':this.currentDirection});
             //this.emit('movement', {'x':this.player.x,'y':this.player.y,'id':this.player.playerId,'otherId':this.player.otherId,'pairId':this.player.pairId});
           },
           callbackScope: this,
@@ -476,6 +495,7 @@ export default new Phaser.Class({
               } else {
                 this.player.anims.play('p2walk',true);
               }
+              this.currentDirection = "DN";
               this.player.y+=2;
             }
           } else if (this.cursors.up.isDown) {
@@ -485,6 +505,7 @@ export default new Phaser.Class({
               } else {
                 this.player.anims.play('p2reverse',true);
               }
+              this.currentDirection = "UP";
               this.player.y-=2;
             }
           } else if (this.cursors.right.isDown) {
@@ -494,6 +515,7 @@ export default new Phaser.Class({
               } else {
                 this.player.anims.play('p2walk',true);
               }
+              this.currentDirection = "R";
               this.player.x+=2;
             }
           } else if (this.cursors.left.isDown) {
@@ -503,6 +525,7 @@ export default new Phaser.Class({
               } else {
                 this.player.anims.play('p2walk',true);
               }
+              this.currentDirection = "L";
               this.player.x-=2;
             }
           } else {
@@ -584,7 +607,8 @@ export default new Phaser.Class({
     alert(player);
   },
 
-  moveZombie: function (zombie) {
+  moveZombie: function (z) {
+    /*
     var adjacentTiles = [];
     adjacentTiles[0] = this.shelves.getTileAtWorldXY(zombie.x,zombie.y+32,true);
     adjacentTiles[1] = this.shelves.getTileAtWorldXY(zombie.x,zombie.y-32,true);
@@ -604,7 +628,11 @@ export default new Phaser.Class({
     }
     //console.log(adjacentTiles);
     //this.scene.pause();
-
+    */
+    var zombie = this.zombiegroup.children.entries.filter(zomb => zomb.trackingId == z.id)[0];
+    zombie.x = z.x;
+    zombie.y = z.y;
+    zombie.refreshBody();
   },
 
   moveOtherPlayer: function (x,y) {

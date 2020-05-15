@@ -125,6 +125,7 @@ io.on('connection', function (socket) {
   	//Get zombie position to send as well
   	var zombies = zombieData.filter(z => z.pairId == movementData.pairId);
   	io.to(movementData.otherId).emit('opponentmove',movementData,zombies[0].zombies);
+  	io.to(movementData.playerId).emit('opponentmove',movementData,zombies[0].zombies);
   });
   
   //Initialize zombie positions
