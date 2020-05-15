@@ -27,6 +27,12 @@ app.get('/', function (req, res) {
   res.sendFile(__dirname + '/index.html');
 });*/
 
+// Function to generate random number
+function randomNumber(min, max) {
+    return Math.floor(Math.random() * (max - min) + min);
+}
+
+
 io.on('connection', function (socket) {
   console.log('a user connected: ', socket.id);
   //send the id
@@ -114,8 +120,11 @@ io.on('connection', function (socket) {
   });*/
   
     // when a player moves, update the player data
-  socket.on('movement', function (movementData) {  	
-  	io.to(movementData.otherId).emit('opponentmove',movementData);
+  socket.on('movement', function (movementData) {
+  	console.log("Moving");
+  	//Get zombie position to send as well
+  	var zombies = zombieData.filter(z => z.pairId == movementData.pairId);
+  	io.to(movementData.otherId).emit('opponentmove',movementData,zombies[0].zombies);
   });
   
   //Initialize zombie positions
@@ -157,8 +166,11 @@ setInterval(function() {
   	for(var i=0;i<zombieData.length;i++) {
   		var zombies = zombieData[i].zombies
   		for(var j=0;j<zombies.length;j++) {
-  			var tiles = getAdjacentTiles(zombies[i].x,zombies[i].y,zombies[i].map);
-  			console.log(tiles);
+  			//console.log(zombies);
+  			//console.log("adj");
+  			var tiles = getAdjacentTiles(zombies[j].x,zombies[j].y,zombieData[i].map);
+  			//console.log(tiles);
+  			moveZombie(tiles,zombies[j]);
   		}
 
   	}
@@ -168,21 +180,40 @@ setInterval(function() {
 
 function getAdjacentTiles(x,y,map) {
 	adjacentTiles = [];
-	for(vari=0;i<map.length) {
+	//console.log("zombie " + x + " " + y);
+	for(var i=0;i<map.length;i++) {
 		//Filter each column
 		var left = map[i].filter(col => col.x-32 == x && col.y == y);
 		var right = map[i].filter(col => col.x+32 == x && col.y == y);
-		var up = map[i].filter(col => col.x == x && col.y+32 == y);
-		var down = map[i].filter(col => col.x == x && col.y-32 == y);
+		var up = map[i].filter(col => col.x == x && col.y-32 == y);
+		var down = map[i].filter(col => col.x == x && col.y+32 == y);
 		if(left.length > 0) {
-			adjacentTiles.push(left);
-		} else if (right.length > 0) {
-			adjacentTiles.push(right);
-		} else if (up.length > 0) {
-			adjacentTiles.push(right);
-		} else if (down.length > 0) {
-			adjacentTiles.push(right);
+			adjacentTiles.push(left[0]);
+		}
+		if (right.length > 0) {
+			adjacentTiles.push(right[0]);
+		}
+		if (up.length > 0) {
+			adjacentTiles.push(up[0]);
+		}
+		if (down.length > 0) {
+			adjacentTiles.push(down[0]);
 		}
 	}
-	return adjacentTiles;
+	//Return the tiles the zombie can move to
+	return adjacentTiles.filter(t => t.idx == -1);
+}
+
+
+function moveZombie(tiles,zombie) {
+	spaces = tiles.filter(t => !zombie.visited.includes(t) );
+	if(spaces.length > 0){
+      var nextMoveIdx = randomNumber(0,spaces.length);
+      zombie.visited.push(spaces[nextMoveIdx]);
+      zombie.x = spaces[nextMoveIdx].x;
+      zombie.y = spaces[nextMoveIdx].y;
+    } else {
+      //clear the visted path
+      zombie.visited = [];
+    }
 }

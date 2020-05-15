@@ -87,9 +87,26 @@ export default new Phaser.Class({
         sc.player2.body.y = movementData.y;
       });*/
 
-      this.socket.on('opponentmove', movementData =>  {
+
+
+      this.socket.on('opponentmove', (movementData,zombies) =>  {
         //alert("Here");
         this.moveOtherPlayer(movementData.x,movementData.y);
+
+        //Move zombies
+        console.log("Zombies");
+        //console.log(zombies);
+        for(var i=0;i<zombies.length;i++) {
+          //console.log("zombie");
+          //console.log(this.zombiegroup.children.entries[0].trackingId);
+          //console.log(zombies[i].id);
+          var zombie = this.zombiegroup.children.entries.filter(zomb => zomb.trackingId == zombies[i].id)[0];
+          //console.log(zombie);
+          //console.log(zombies[i].x + " " + zombies[i].y);
+          zombie.setPosition(zombies[i].x,zombies[i].y);
+          //zombie.x = zombies[i].x;
+          //zombie.y = zombies[i].y;
+        }
         //sc.player2.body.x = movementData.x;
         //sc.player2.body.y = movementData.y;
       });
@@ -130,7 +147,7 @@ export default new Phaser.Class({
 
       //Get a representation of the map for the server
       var tileMapX = 16;
-      var row = [];
+      var zombieMoveMap = [];
       for(var i=0;i<25;i++) {
         var col = []
         var tileMapY = 16;
@@ -140,18 +157,17 @@ export default new Phaser.Class({
           col.push({'idx':idx, 'x':tileMapX,'y':tileMapY});
           tileMapY += 32;
         }
-        row.push(col);
+        zombieMoveMap.push(col);
         tileMapX += 32;
       }
-      console.log(row);
+      console.log(zombieMoveMap);
 
       this.socket.on('pair', function (pair) {
         //For server
-        var zombieData = {'playerId':socket_ID,'zombies':[],'pairId':pair[0].pairId,'map':sc.shelves};
+        var zombieData = {'playerId':socket_ID,'zombies':[],'pairId':pair[0].pairId,'map':zombieMoveMap};
         //Send the tilemaps to the server
         if(!sc.paired) {
             //alert(JSON.stringify(pair));
-            sc.paired = true;
             // set bounds so the camera won't go outside the game world
             if(pair[0].playerId == socket_ID) {
               var me = pair[0];
@@ -193,7 +209,6 @@ export default new Phaser.Class({
             //Send positions to server
 
             //this.emit('zombiestart',zombieData);
-;
         }
         var zombies = sc.map.getObjectLayer('zombie')['objects'];
         sc.zombiegroup = sc.physics.add.group();
@@ -207,8 +222,8 @@ export default new Phaser.Class({
           zombiesprite.body.setAllowGravity(false);
           zombiesprite.visitedTiles = [];
           zombiesprite.trackingId = zombieIdx;
+          zombieData.zombies.push({'id':zombieIdx,'x':zombiesprite.x,'y':zombiesprite.y,'visited':[]});
           zombieIdx++;
-          zombieData.zombies.push({'id':zombieIdx,'x':zombiesprite.x,'y':zombiesprite.y});
         });
         //Zombie animations
         sc.anims.create({
@@ -225,12 +240,25 @@ export default new Phaser.Class({
         });
 
         sc.zombiegroup.playAnimation('zwalk');
-        this.emit("zombiestart",zombieData);
+        if(me.playerNo == 1) {
+          this.emit("zombiestart",zombieData);
+        }
         /*
         sc.socket.on('zombieRequestTiles', z => {
           alert("Here");
           this.sendTilesToServer(z);
         });*/
+        //Set up timer to send player movement
+        sc.moveTimer = sc.time.addEvent({
+          delay: 100,
+          callback: function() {
+            this.emit('movement', {'x':sc.player.x,'y':sc.player.y,'id':sc.player.playerId,'otherId':sc.player.otherId,'pairId':sc.player.pairId});
+            //this.emit('movement', {'x':this.player.x,'y':this.player.y,'id':this.player.playerId,'otherId':this.player.otherId,'pairId':this.player.pairId});
+          },
+          callbackScope: this,
+          loop: true
+        });
+        sc.paired = true;
       });
 
       //this.socket.on('otherplayer', function (other) {
@@ -484,8 +512,6 @@ export default new Phaser.Class({
               this.player.anims.play('p2idle',true);
             }
           }
-          //Send movement to server
-          this.socket.emit('movement', {'x':this.player.x,'y':this.player.y,'id':this.player.playerId,'otherId':this.player.otherId});
           //Detect Zombie killing player
           this.zombiegroup.children.entries.forEach(zombie => this.zombieEatPlayer(zombie));
         } else {
@@ -550,12 +576,8 @@ export default new Phaser.Class({
             }
           }
         }
+
       }
-
-
-
-      //this.graphics.clear();
-      //this.graphics.fillRectShape(iconarea);
   },
 
   createPlayer: function (player) {
@@ -607,6 +629,7 @@ export default new Phaser.Class({
     }
   },
 
+  /*
   sendTilesToServer: function(z) {
     //console.log("Here");
     //console.log(z[0].x);
@@ -618,6 +641,11 @@ export default new Phaser.Class({
     adjacentTiles[2] = this.shelves.getTileAtWorldXY(z[0].x+32,z[0].y,true);
     adjacentTiles[3] = this.shelves.getTileAtWorldXY(z[0].x-32,z[0].y,true);
     //console.log(adjacentTiles);
+  },*/
+
+  sendMovementData: function(player) {
+    console.log(player);
+
   },
 
   zombieEatPlayer: function(zombie) {
