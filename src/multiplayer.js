@@ -50,6 +50,7 @@ export default new Phaser.Class({
      this.playingDeathSeq = false;
      this.invincible = true;
      this.currentDirection = "ST";
+     this.scoring = false;
 
      this.paired = false;
      //var paired = this.paired;
@@ -183,18 +184,17 @@ export default new Phaser.Class({
 
 
 
-      this.socket.on('opponentmove', (movementData,zombies,icons,pair) =>  {
+      this.socket.on('opponentmove', (movementData,zombies,icons,scores) =>  {
         console.log("Move");
         console.log(movementData);
         console.log(socket_ID);
         console.log(icons);
         //Update Scores
-        /*
-        if(pair.length > 0) {
-          console.log(pair);
-          this.p1ScoreTxt.setText('Player 1: '+pair[0].playerScore);
-          this.p2ScoreTxt.setText('Player 2: '+pair[0].otherScore);
-        }*/
+        //if(pair.length > 0) {
+          console.log(scores);
+          this.p1ScoreTxt.setText('Player 1: '+scores.p1);
+          this.p2ScoreTxt.setText('Player 2: '+scores.p2);
+        //}
         if(movementData.otherId == socket_ID) {
           this.moveOtherPlayer(movementData.x,movementData.y);
           //Opponent animations
@@ -235,8 +235,8 @@ export default new Phaser.Class({
             this.activeSprite = this.icongroup.children.entries.filter(icon => icon.collectOrder == iconDetail.order+1)[0];
             this.activeSprite.setVisible(true);
             this.activeSprite.setActive(true);
-            var nextIcon = icons[0].icons
-            this.scene.pause();
+            //var nextIcon = icons[0].icons
+            this.scoring = false;
           }
         }
       });
@@ -276,14 +276,14 @@ export default new Phaser.Class({
             }
 
             if(me.playerNo == 1) {
-              //alert("I am 1");
+              alert("I am 1");
               // create the player sprite
               var playerLayer = sc.map.getObjectLayer('player')['objects'];
               var player2Layer = sc.map.getObjectLayer('player2')['objects'];
               sc.player = sc.physics.add.sprite(playerLayer[0].x+16, playerLayer[0].y-16, 'player',0);
               sc.player2 = sc.physics.add.sprite(player2Layer[0].x+16, player2Layer[0].y-16, 'player2',0);
             } else {
-              //alert("I am 2");
+              alert("I am 2");
               var playerLayer = sc.map.getObjectLayer('player2')['objects'];
               var player2Layer = sc.map.getObjectLayer('player')['objects'];
               sc.player = sc.physics.add.sprite(playerLayer[0].x+16, playerLayer[0].y-16, 'player2',0);
@@ -607,8 +607,10 @@ export default new Phaser.Class({
               this.points.setText(this.activeSprite.points);
               this.points.setPosition(this.activeSprite.x, this.activeSprite.y-16);
               this.points.setVisible(true);
-
-              this.socket.emit('collected',this.player.pairId,this.player.playerId,this.activeSprite.iconName);
+              if(!this.scoring) {
+                this.scoring = true;
+                this.socket.emit('collected',this.player.pairId,this.player.playerId,this.activeSprite.iconName);
+              }
               //var nextSprite = this.activeSprite.collectOrder;
 
 

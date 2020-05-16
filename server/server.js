@@ -59,13 +59,13 @@ io.on('connection', function (socket) {
   	}
   }*/
   if(players.length == 0) {
-  	players.push({playerId:socket.id, playerNo:1, otherPlayer:null});
+  	players.push({playerId:socket.id, playerNo:1, otherPlayer:null,score:0,lives:3});
   } else {
   	if(players[players.length-1].otherPlayer === null) {
   		players[players.length-1].otherPlayer = socket.id;
-  		players.push({playerId:socket.id, playerNo:2, otherPlayer:players[players.length-1].playerId});
+  		players.push({playerId:socket.id, playerNo:2, otherPlayer:players[players.length-1].playerId,score:0,lives:3});
   	} else {
-  		players.push({playerId:socket.id, playerNo:1, otherPlayer:null});
+  		players.push({playerId:socket.id, playerNo:1, otherPlayer:null,score:0,lives:3});
   	}
   }
   console.log(players);
@@ -132,13 +132,23 @@ io.on('connection', function (socket) {
     }
     //Get the icons to send
     var iconGr = iconGroups.filter(ig => ig.pairId == movementData.pairId);
-    console.log(movementData);
-    console.log(movementData.playerId);
-    //Get the pair
+    //Get the scores
+    var pair = pairs.filter(p => p.pairId == movementData.pairId)[0];
+    if(pair.playerId == movementData.id) {
+      p2Score = players.filter(p => p.playerId == movementData.id)[0].score;
+      p1Score = players.filter(p => p.playerId == movementData.otherId)[0].score;
+    } else {
+      p1Score = players.filter(p => p.playerId == movementData.id)[0].score;
+      p2Score = players.filter(p => p.playerId == movementData.otherId)[0].score;
+    }
+
     var pair = pairs.filter(p => p.pairId == movementData.pairId);
-    //console.log(iconGr);
-  	io.to(movementData.otherId).emit('opponentmove',movementData,zombs,iconGr,pair);
-  	io.to(movementData.playerId).emit('opponentmove',movementData,zombs,iconGr,pair);
+    console.log(pair);
+    //var me = movementData.id;
+    //var o = movementData.otherId;
+
+  	io.to(movementData.otherId).emit('opponentmove',movementData,zombs,iconGr,{'p1':p1Score,'p2':p2Score});
+  	io.to(movementData.id).emit('opponentmove',movementData,zombs,iconGr,{'p1':p1Score,'p2':p2Score});
   });
 
   //Initialize zombie positions
@@ -178,11 +188,17 @@ io.on('connection', function (socket) {
     //console.log(iconGr);
   	var icon = iconGr.icons[icon];
   	var pair = pairs.filter(p => p.pairId == pairId)[0];
-  	if(pair.playerId == playerId) {
+    console.log(playerId);
+    console.log(pair);
+    console.log(pairs);
+    var player = players.filter(p => p.playerId == playerId)[0];
+    player.score = icon.points;
+    /*
+  	if(pair.id == playerId) {
   		pair.playerScore += icon.points;
   	} else {
       pair.otherScore += icon.points;
-    }
+    }*/
     icon.collected = true;
   });
 
