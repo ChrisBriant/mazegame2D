@@ -31,19 +31,29 @@ export default new Phaser.Class({
     },
 
    create: function() {
-     this.socket = io();
-     this.socket = io.connect('http://localhost:8081');
+
      //this.playerNo = 0;
      console.log(this.socket);
      //this.scene.pause();
      //var socketId = this.socket['id'];
      //console.log(this.socket._callbacks);
-     var socket_ID;
+     this.level = this.registry.values.level;
+     if(this.level > 1) {
+       var socket_ID = this.registry.values.socket_ID;
+       //Tell server nextlevel is ready
+       this.socket = this.registry.values.socket;
+       this.socket.emit('newLevel',socket_ID,this.registry.values.pairId);
+     } else {
+       this.socket = io();
+       this.socket = io.connect('http://localhost:8081');
+       var socket_ID;
+     }
+
      var playerNo = 0;
 
 
      //this.socket.emit('playerMovement', { x: 28, y: 92, rotation: 44 });
-     this.level = this.registry.values.level;
+
      //this.score = this.registry.values.score;
      this.gameMessage = "";
      this.levelComplete = false;
@@ -232,9 +242,17 @@ export default new Phaser.Class({
           if(iconDetail.collected) {
             //Get next sprite
             this.activeSprite.destroy();
-            this.activeSprite = this.icongroup.children.entries.filter(icon => icon.collectOrder == iconDetail.order+1)[0];
-            this.activeSprite.setVisible(true);
-            this.activeSprite.setActive(true);
+            if(iconDetail.order < 6) {
+             this.activeSprite = this.icongroup.children.entries.filter(icon => icon.collectOrder == iconDetail.order+1)[0];
+             this.activeSprite.setVisible(true);
+             this.activeSprite.setActive(true);
+           } else {
+             this.registry.values.level += 1;
+             this.registry.values.socket_ID = socket_ID;
+             this.registry.values.socket = this.socket;
+             this.registry.values.pairId = this.player.pairId;
+             this.scene.restart();
+           }
             //var nextIcon = icons[0].icons
             this.scoring = false;
           }
@@ -261,6 +279,7 @@ export default new Phaser.Class({
       console.log(zombieMoveMap);
 
       this.socket.on('pair', function (pair) {
+        alert("YOOOOO");
         //For server
         var zombieData = {'playerId':socket_ID,'zombies':[],'pairId':pair[0].pairId,'map':zombieMoveMap};
         //Send the tilemaps to the server
@@ -280,7 +299,9 @@ export default new Phaser.Class({
               // create the player sprite
               var playerLayer = sc.map.getObjectLayer('player')['objects'];
               var player2Layer = sc.map.getObjectLayer('player2')['objects'];
-              sc.player = sc.physics.add.sprite(playerLayer[0].x+16, playerLayer[0].y-16, 'player',0);
+              //sc.player = sc.physics.add.sprite(playerLayer[0].x+16, playerLayer[0].y-16, 'player',0);
+              //TEST
+              sc.player = sc.physics.add.sprite(560, 216, 'player',0);
               sc.player2 = sc.physics.add.sprite(player2Layer[0].x+16, player2Layer[0].y-16, 'player2',0);
             } else {
               alert("I am 2");
@@ -382,7 +403,7 @@ export default new Phaser.Class({
           iconsprite.collectOrder = sc.iconOrder[icon.name].order;
           iconsprite.points = sc.iconOrder[icon.name].points;
           iconsprite.iconName = icon.name
-          if (sc.iconOrder[icon.name].order != 1) {
+          if (sc.iconOrder[icon.name].order != 6) {
             iconsprite.setVisible(false);
             iconsprite.setActive(false);
           } else {
@@ -603,7 +624,7 @@ export default new Phaser.Class({
         if(!this.levelComplete) {
           var iconarea = new Phaser.Geom.Rectangle(this.activeSprite.x-16,this.activeSprite.y-16, 32, 32);
           if (iconarea.contains(this.player.x,this.player.y)) {
-            if(this.activeSprite.collectOrder != 6) {
+            //if(this.activeSprite.collectOrder != 6) {
               this.points.setText(this.activeSprite.points);
               this.points.setPosition(this.activeSprite.x, this.activeSprite.y-16);
               this.points.setVisible(true);
@@ -611,22 +632,7 @@ export default new Phaser.Class({
                 this.scoring = true;
                 this.socket.emit('collected',this.player.pairId,this.player.playerId,this.activeSprite.iconName);
               }
-              //var nextSprite = this.activeSprite.collectOrder;
-
-
-              //Score text
-              /*
-              this.score += this.activeSprite.points;
-              this.scoreTxt.setText('Score: '+this.score);
-
-              this.activeSprite.destroy();
-              console.log(nextSprite);
-              console.log(this.icongroup.children.entries);
-              this.activeSprite = this.icongroup.children.entries.filter(icon => icon.collectOrder == nextSprite+1)[0];
-              console.log(this.activeSprite);
-              this.activeSprite.setVisible(true);
-              this.activeSprite.setActive(true);
-              */
+            /*
             } else {
               this.levelComplete = true;
               this.score += this.activeSprite.points;
@@ -652,7 +658,7 @@ export default new Phaser.Class({
                 callbackScope: this,
                 loop: false
               });
-            }
+            }*/
           }
         }
 
