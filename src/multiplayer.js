@@ -41,6 +41,100 @@ export default new Phaser.Class({
      var socket_ID;
      var playerNo = 0;
 
+
+     //this.socket.emit('playerMovement', { x: 28, y: 92, rotation: 44 });
+     this.level = this.registry.values.level;
+     //this.score = this.registry.values.score;
+     this.gameMessage = "";
+     this.levelComplete = false;
+     this.playingDeathSeq = false;
+     this.invincible = true;
+     this.currentDirection = "ST";
+
+     this.paired = false;
+     //var paired = this.paired;
+     this.player;
+     this.player2;
+     //var player = this.player;
+     //var player2 = this.player2;
+     //var scenePhysics = this.physics;
+     //var map = this.map;
+     //var sceneCameras = this.cameras;
+     var sc = this;
+
+     // load the map
+     this.map = this.make.tilemap({key: 'map' + this.level});
+     var levelTiles = this.map.addTilesetImage('tilemap');
+
+     this.cameras.main.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
+
+
+     this.floor = this.map.createDynamicLayer('floor', levelTiles, 0, 0);
+     // create the shelves layer
+     this.shelves = this.map.createDynamicLayer('walls', levelTiles, 0, 0);
+     console.log("shelves");
+     console.log(this.shelves);
+     // the player will collide with this layer
+     this.shelves.setCollisionByExclusion([-1]);
+
+     this.blackRectangle = this.add.graphics({ fillStyle: { color: 0x000000} }).setAlpha(0);
+
+     // text which floats to top when points scored
+     this.points = this.add.text(0, 0, '', {
+         fontSize: '20px',
+         fill: '#ffffff'
+     });
+     this.points.setScrollFactor(0);
+     this.points.setVisible(false);
+
+
+
+     //Used for debugging only
+     this.graphics = this.add.graphics({ fillStyle: { color: 0x0000ff } });
+     //Score panel
+     this.scorepanel = this.add.graphics({ fillStyle: { color: 0x000000, alpha:0.5 } });
+     var scorerect = new Phaser.Geom.Rectangle(0, 0, this.map.widthInPixels,28 );
+     this.scorepanel.fillRectShape(scorerect);
+
+
+     // text which displays the score
+     this.p1ScoreTxt = this.add.text(0, 0, 'Player 1: 0', {
+         fontSize: '20px',
+         fill: '#ffffff'
+     });
+     this.p1ScoreTxt.setScrollFactor(0);
+     //display lives
+     this.p1LivesTxt = this.add.text(300, 0, 'L: 3', {
+         fontSize: '20px',
+         fill: '#ffffff'
+     });
+     this.p1LivesTxt.setScrollFactor(0);
+
+     // text which displays the score
+     this.p2ScoreTxt = this.add.text(400, 0, 'Player 2: 0', {
+         fontSize: '20px',
+         fill: '#ffffff'
+     });
+     this.p2ScoreTxt.setScrollFactor(0);
+     //display lives
+     this.p2LivesTxt = this.add.text(700, 0, 'L: 3', {
+         fontSize: '20px',
+         fill: '#ffffff'
+     });
+     this.p2LivesTxt.setScrollFactor(0);
+
+     //Centre of screen
+     //this.screenCenterX = this.cameras.main.worldView.x + this.cameras.main.width / 2;
+     //this.screenCenterY = this.cameras.main.worldView.y + this.cameras.main.height / 2;
+
+     this.messageTxt = this.add.text(0,0, '', {
+         fontSize: '20px',
+         fill: '#ffffff',
+         align: "center"
+     });
+     this.messageTxt.setScrollFactor(0);
+     this.messageTxt.setVisible(false);
+
      this.socket.on('socketID', function (socketID) {
        console.log(socketID);
        socket_ID= socketID;
@@ -89,14 +183,22 @@ export default new Phaser.Class({
 
 
 
-      this.socket.on('opponentmove', (movementData,zombies) =>  {
+      this.socket.on('opponentmove', (movementData,zombies,icons,pair) =>  {
         console.log("Move");
         console.log(movementData);
         console.log(socket_ID);
+        console.log(icons);
+        //Update Scores
+        /*
+        if(pair.length > 0) {
+          console.log(pair);
+          this.p1ScoreTxt.setText('Player 1: '+pair[0].playerScore);
+          this.p2ScoreTxt.setText('Player 2: '+pair[0].otherScore);
+        }*/
         if(movementData.otherId == socket_ID) {
           this.moveOtherPlayer(movementData.x,movementData.y);
           //Opponent animations
-          if(this.movementData.direction == "UP")
+          if(movementData.direction == "UP")
             if(this.player.playerNo == 1) {
               this.player2.anims.play('p2reverse',true);
             } else {
@@ -115,54 +217,31 @@ export default new Phaser.Class({
         console.log("Zombies");
         //console.log(zombies);
         for(var i=0;i<zombies.length;i++) {
-          //console.log("zombie");
-          //console.log(this.zombiegroup.children.entries[0].trackingId);
-          //console.log(zombies[i].id);
           var zombie = this.zombiegroup.children.entries.filter(zomb => zomb.trackingId == zombies[i].id)[0];
-          //console.log(zombie);
-          //console.log(zombies[i].x + " " + zombies[i].y);
           zombie.setPosition(zombies[i].x,zombies[i].y);
-          //zombie.x = zombies[i].x;
-          //zombie.y = zombies[i].y;
         }
-        //sc.player2.body.x = movementData.x;
-        //sc.player2.body.y = movementData.y;
+        //Deal with icons
+        if(icons.length > 0) {
+          console.log("active sprite");
+          //console.log(this.activeSprite);
+          console.log(icons[0]);
+          var iconDetail = icons[0].icons[this.activeSprite.iconName];
+          console.log(this.activeSprite.iconName);
+          console.log(iconDetail);
+          //An item is collected
+          if(iconDetail.collected) {
+            //Get next sprite
+            this.activeSprite.destroy();
+            this.activeSprite = this.icongroup.children.entries.filter(icon => icon.collectOrder == iconDetail.order+1)[0];
+            this.activeSprite.setVisible(true);
+            this.activeSprite.setActive(true);
+            var nextIcon = icons[0].icons
+            this.scene.pause();
+          }
+        }
       });
 
-      //this.socket.emit('playerMovement', { x: 28, y: 92, rotation: 44 });
-      this.level = this.registry.values.level;
-      this.score = this.registry.values.score;
-      this.gameMessage = "";
-      this.levelComplete = false;
-      this.playingDeathSeq = false;
-      this.invincible = true;
-      this.currentDirection = "ST";
 
-      this.paired = false;
-      //var paired = this.paired;
-      this.player;
-      this.player2;
-      //var player = this.player;
-      //var player2 = this.player2;
-      //var scenePhysics = this.physics;
-      //var map = this.map;
-      //var sceneCameras = this.cameras;
-      var sc = this;
-
-      // load the map
-      this.map = this.make.tilemap({key: 'map' + this.level});
-      var levelTiles = this.map.addTilesetImage('tilemap');
-
-      this.cameras.main.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
-
-
-      this.floor = this.map.createDynamicLayer('floor', levelTiles, 0, 0);
-      // create the shelves layer
-      this.shelves = this.map.createDynamicLayer('walls', levelTiles, 0, 0);
-      console.log("shelves");
-      console.log(this.shelves);
-      // the player will collide with this layer
-      this.shelves.setCollisionByExclusion([-1]);
 
       //Get a representation of the map for the server
       var tileMapX = 16;
@@ -271,12 +350,46 @@ export default new Phaser.Class({
         sc.moveTimer = sc.time.addEvent({
           delay: 100,
           callback: function() {
-            this.emit('movement', {'x':sc.player.x,'y':sc.player.y,'id':sc.player.playerId,'otherId':sc.player.otherId,'pairId':sc.player.pairId,'direction':this.currentDirection});
+            this.emit('movement', {'x':sc.player.x,'y':sc.player.y,'id':sc.player.playerId,'otherId':sc.player.otherId,'pairId':sc.player.pairId,'direction':sc.currentDirection});
             //this.emit('movement', {'x':this.player.x,'y':this.player.y,'id':this.player.playerId,'otherId':this.player.otherId,'pairId':this.player.pairId});
           },
           callbackScope: this,
           loop: true
         });
+
+
+        sc.iconOrder = {
+          'pop' : {'order':1,'points':500,'collected':false},
+          'beans' : {'order':2,'points':1000,'collected':false},
+          'bread' : {'order':3,'points':1000,'collected':false},
+          'sanitizer' : {'order':4,'points':2000,'collected':false},
+          'rice' : {'order':5,'points':5000,'collected':false},
+          'toiletroll' : {'order':6,'points':10000,'collected':false},
+        }
+
+        if(sc.player.playerNo == 1) {
+          sc.socket.emit('sendicons', {'pairId':sc.player.pairId, 'icons':sc.iconOrder});
+        }
+
+        var icons = sc.map.getObjectLayer('icons')['objects'];
+        sc.icongroup = sc.physics.add.group();
+        //Define order of collection
+
+
+        icons.forEach(icon => {
+          var iconsprite = sc.icongroup.create(icon.x+16, icon.y-16, icon.name);
+          iconsprite.body.setAllowGravity(false);
+          iconsprite.collectOrder = sc.iconOrder[icon.name].order;
+          iconsprite.points = sc.iconOrder[icon.name].points;
+          iconsprite.iconName = icon.name
+          if (sc.iconOrder[icon.name].order != 1) {
+            iconsprite.setVisible(false);
+            iconsprite.setActive(false);
+          } else {
+            sc.activeSprite = iconsprite;
+          }
+        });
+        sc.player2.anims.play('p2walk');
         sc.paired = true;
       });
 
@@ -341,6 +454,7 @@ export default new Phaser.Class({
           repeat: 0
       });
 
+
       // tiles for the ground layer
 
       //var iconTiles = this.map.addTilesetImage('icons');
@@ -363,32 +477,9 @@ export default new Phaser.Class({
       //this.icons = this.map.createFromObjects('icons', 'iconsprites', { key: 'icon' });
 
       //console.log(this.icons);
-      var icons = this.map.getObjectLayer('icons')['objects'];
-      this.icongroup = this.physics.add.group();
-      //Define order of collection
-      this.iconOrder = {
-        'pop' : {'order':1,'points':500},
-        'beans' : {'order':2,'points':1000},
-        'bread' : {'order':3,'points':1000},
-        'sanitizer' : {'order':4,'points':2000},
-        'rice' : {'order':5,'points':5000},
-        'toiletroll' : {'order':6,'points':10000},
-      }
 
-      console.log(this.iconOrder['beans']);
 
-      icons.forEach(icon => {
-        var iconsprite = this.icongroup.create(icon.x+16, icon.y-16, icon.name);
-        iconsprite.body.setAllowGravity(false);
-        iconsprite.collectOrder = this.iconOrder[icon.name].order;
-        iconsprite.points = this.iconOrder[icon.name].points;
-        if (this.iconOrder[icon.name].order != 1) {
-          iconsprite.setVisible(false);
-          iconsprite.setActive(false);
-        } else {
-          this.activeSprite = iconsprite;
-        }
-      });
+
 
       //For testing scene transition
       /*
@@ -421,49 +512,6 @@ export default new Phaser.Class({
       //this.cameras.main.setBackgroundColor('#ccccff');
 
 
-      this.blackRectangle = this.add.graphics({ fillStyle: { color: 0x000000} }).setAlpha(0);
-
-      // text which floats to top when points scored
-      this.points = this.add.text(0, 0, '', {
-          fontSize: '20px',
-          fill: '#ffffff'
-      });
-      this.points.setScrollFactor(0);
-      this.points.setVisible(false);
-
-
-
-      //Used for debugging only
-      this.graphics = this.add.graphics({ fillStyle: { color: 0x0000ff } });
-      //Score panel
-      this.scorepanel = this.add.graphics({ fillStyle: { color: 0x000000, alpha:0.5 } });
-      var scorerect = new Phaser.Geom.Rectangle(0, 0, this.map.widthInPixels,28 );
-      this.scorepanel.fillRectShape(scorerect);
-
-      // text which displays the score
-      this.scoreTxt = this.add.text(0, 0, 'Score: ' +  this.score, {
-          fontSize: '20px',
-          fill: '#ffffff'
-      });
-      this.scoreTxt.setScrollFactor(0);
-      //display lives
-      this.livesTxt = this.add.text(300, 0, 'Lives: ' +  this.registry.values.lives, {
-          fontSize: '20px',
-          fill: '#ffffff'
-      });
-      this.livesTxt.setScrollFactor(0);
-
-      //Centre of screen
-      //this.screenCenterX = this.cameras.main.worldView.x + this.cameras.main.width / 2;
-      //this.screenCenterY = this.cameras.main.worldView.y + this.cameras.main.height / 2;
-
-      this.messageTxt = this.add.text(0,0, '', {
-          fontSize: '20px',
-          fill: '#ffffff',
-          align: "center"
-      });
-      this.messageTxt.setScrollFactor(0);
-      this.messageTxt.setVisible(false);
   },
 
 
@@ -556,14 +604,19 @@ export default new Phaser.Class({
           var iconarea = new Phaser.Geom.Rectangle(this.activeSprite.x-16,this.activeSprite.y-16, 32, 32);
           if (iconarea.contains(this.player.x,this.player.y)) {
             if(this.activeSprite.collectOrder != 6) {
-              var nextSprite = this.activeSprite.collectOrder;
-
-              //Score text
-              this.score += this.activeSprite.points;
-              this.scoreTxt.setText('Score: '+this.score);
               this.points.setText(this.activeSprite.points);
               this.points.setPosition(this.activeSprite.x, this.activeSprite.y-16);
               this.points.setVisible(true);
+
+              this.socket.emit('collected',this.player.pairId,this.player.playerId,this.activeSprite.iconName);
+              //var nextSprite = this.activeSprite.collectOrder;
+
+
+              //Score text
+              /*
+              this.score += this.activeSprite.points;
+              this.scoreTxt.setText('Score: '+this.score);
+
               this.activeSprite.destroy();
               console.log(nextSprite);
               console.log(this.icongroup.children.entries);
@@ -571,6 +624,7 @@ export default new Phaser.Class({
               console.log(this.activeSprite);
               this.activeSprite.setVisible(true);
               this.activeSprite.setActive(true);
+              */
             } else {
               this.levelComplete = true;
               this.score += this.activeSprite.points;
@@ -607,8 +661,9 @@ export default new Phaser.Class({
     alert(player);
   },
 
+  /*
   moveZombie: function (z) {
-    /*
+
     var adjacentTiles = [];
     adjacentTiles[0] = this.shelves.getTileAtWorldXY(zombie.x,zombie.y+32,true);
     adjacentTiles[1] = this.shelves.getTileAtWorldXY(zombie.x,zombie.y-32,true);
@@ -628,12 +683,11 @@ export default new Phaser.Class({
     }
     //console.log(adjacentTiles);
     //this.scene.pause();
-    */
+
     var zombie = this.zombiegroup.children.entries.filter(zomb => zomb.trackingId == z.id)[0];
     zombie.x = z.x;
     zombie.y = z.y;
-    zombie.refreshBody();
-  },
+  },*/
 
   moveOtherPlayer: function (x,y) {
     //console.log(x)
@@ -678,7 +732,7 @@ export default new Phaser.Class({
 
   zombieEatPlayer: function(zombie) {
     var deathRect = new Phaser.Geom.Rectangle(this.player.body.x, this.player.body.y, 32, 32);
-    if(deathRect.contains(zombie.x,zombie.y) && !this.player.dead && !this.player.invincible) {
+    if(deathRect.contains(zombie.x,zombie.y) && !this.player.dead && !this.invincible) {
       console.log("Player Died");
       this.player.dead = true;
 

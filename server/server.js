@@ -122,11 +122,23 @@ io.on('connection', function (socket) {
 
     // when a player moves, update the player data
   socket.on('movement', function (movementData) {
-  	console.log("Moving");
+  	//console.log(movementData);
   	//Get zombie position to send as well
   	var zombies = zombieData.filter(z => z.pairId == movementData.pairId);
-  	io.to(movementData.otherId).emit('opponentmove',movementData,zombies[0].zombies);
-  	io.to(movementData.playerId).emit('opponentmove',movementData,zombies[0].zombies);
+    if(zombies.length == 0) {
+      var zombs = [];
+    } else {
+      var zombs = zombies[0].zombies;
+    }
+    //Get the icons to send
+    var iconGr = iconGroups.filter(ig => ig.pairId == movementData.pairId);
+    console.log(movementData);
+    console.log(movementData.playerId);
+    //Get the pair
+    var pair = pairs.filter(p => p.pairId == movementData.pairId);
+    //console.log(iconGr);
+  	io.to(movementData.otherId).emit('opponentmove',movementData,zombs,iconGr,pair);
+  	io.to(movementData.playerId).emit('opponentmove',movementData,zombs,iconGr,pair);
   });
 
   //Initialize zombie positions
@@ -155,18 +167,23 @@ io.on('connection', function (socket) {
   });
 
   socket.on('sendicons', function(icons) {
+    console.log("iconssent");
+    console.log(icons);
   	iconGroups.push(icons);
   });
 
   socket.on('collected', function(pairId,playerId,icon) {
   	//Update score
-  	var iconGr = iconGroups.filter(ig => ig.pairId == pairId);
+  	var iconGr = iconGroups.filter(ig => ig.pairId == pairId)[0];
+    //console.log(iconGr);
   	var icon = iconGr.icons[icon];
   	var pair = pairs.filter(p => p.pairId == pairId)[0];
   	if(pair.playerId == playerId) {
   		pair.playerScore += icon.points;
-  		icon.collected = true;
-  	}
+  	} else {
+      pair.otherScore += icon.points;
+    }
+    icon.collected = true;
   });
 
 
