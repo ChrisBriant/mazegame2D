@@ -7,7 +7,7 @@ export default new Phaser.Class({
     Extends: Phaser.Scene,
     initialize:
     function Multiplayer() {
-        Phaser.Scene.call(this, { key: 'Multiplayer' , active: true  })
+        Phaser.Scene.call(this, { key: 'Multiplayer' , active: false })
     },
 
     preload: function () {
@@ -247,11 +247,15 @@ export default new Phaser.Class({
              this.activeSprite.setVisible(true);
              this.activeSprite.setActive(true);
            } else {
-             this.registry.values.level += 1;
-             this.registry.values.socket_ID = socket_ID;
-             this.registry.values.socket = this.socket;
-             this.registry.values.pairId = this.player.pairId;
-             this.scene.restart();
+             if(this.paired) {
+               this.paired = false;
+               //this.registry.set('level',this.level+1);
+               this.registry.set('level',2);
+               this.registry.values.socket_ID = socket_ID;
+               this.registry.values.socket = this.socket;
+               this.registry.values.pairId = this.player.pairId;
+               this.scene.restart();
+            }
            }
             //var nextIcon = icons[0].icons
             this.scoring = false;
@@ -279,11 +283,12 @@ export default new Phaser.Class({
       console.log(zombieMoveMap);
 
       this.socket.on('pair', function (pair) {
-        alert("YOOOOO");
+        //alert("YOOOOO");
         //For server
         var zombieData = {'playerId':socket_ID,'zombies':[],'pairId':pair[0].pairId,'map':zombieMoveMap};
         //Send the tilemaps to the server
         if(!sc.paired) {
+            sc.paired = true;
             //alert(JSON.stringify(pair));
             // set bounds so the camera won't go outside the game world
             if(pair[0].playerId == socket_ID) {
@@ -294,8 +299,13 @@ export default new Phaser.Class({
               var otherPlayer = pair[0];
             }
 
+            console.log("players ready");
+            console.log(me);
+            console.log(otherPlayer);
+
             if(me.playerNo == 1) {
               alert("I am 1");
+              alert(sc.level);
               // create the player sprite
               var playerLayer = sc.map.getObjectLayer('player')['objects'];
               var player2Layer = sc.map.getObjectLayer('player2')['objects'];
@@ -305,6 +315,7 @@ export default new Phaser.Class({
               sc.player2 = sc.physics.add.sprite(player2Layer[0].x+16, player2Layer[0].y-16, 'player2',0);
             } else {
               alert("I am 2");
+              alert(sc.level);
               var playerLayer = sc.map.getObjectLayer('player2')['objects'];
               var player2Layer = sc.map.getObjectLayer('player')['objects'];
               sc.player = sc.physics.add.sprite(playerLayer[0].x+16, playerLayer[0].y-16, 'player2',0);
@@ -359,8 +370,10 @@ export default new Phaser.Class({
         });
 
         sc.zombiegroup.playAnimation('zwalk');
+        console.log("Me Again");
+        console.log(me);
         if(me.playerNo == 1) {
-          this.emit("zombiestart",zombieData);
+          this.emit("zombiestart",zombieData,me.pairId);
         }
         /*
         sc.socket.on('zombieRequestTiles', z => {
@@ -411,7 +424,6 @@ export default new Phaser.Class({
           }
         });
         sc.player2.anims.play('p2walk');
-        sc.paired = true;
       });
 
       //this.socket.on('otherplayer', function (other) {
