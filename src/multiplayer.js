@@ -14,7 +14,7 @@ export default new Phaser.Class({
         // map made with Tiled in JSON format
         this.load.tilemapTiledJSON('map1', 'assets/level1.json');
         this.load.tilemapTiledJSON('map2', 'assets/level2.json');
-        this.load.tilemapTiledJSON('map3', 'assets/level2.json');
+        this.load.tilemapTiledJSON('map3', 'assets/level3.json');
         // tiles in spritesheet
         this.load.spritesheet('tilemap', 'assets/tilemap.png', {frameWidth: 32, frameHeight: 32});
         //this.load.spritesheet('icons', 'assets/icons.png', {frameWidth: 32, frameHeight: 32});
@@ -39,11 +39,15 @@ export default new Phaser.Class({
      //console.log(this.socket._callbacks);
      this.level = this.registry.values.level;
      if(this.level > 1) {
+       console.log("Scene Restart");
+       this.isFirstInstance = false;
        var socket_ID = this.registry.values.socket_ID;
        //Tell server nextlevel is ready
        this.socket = this.registry.values.socket;
+       this.socket.removeAllListeners();
        this.socket.emit('newLevel',socket_ID,this.registry.values.pairId);
      } else {
+       this.isFirstInstance = true;
        this.socket = io();
        this.socket = io.connect('http://localhost:8081');
        var socket_ID;
@@ -77,6 +81,8 @@ export default new Phaser.Class({
      this.map = this.make.tilemap({key: 'map' + this.level});
      var levelTiles = this.map.addTilesetImage('tilemap');
 
+
+
      this.cameras.main.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
 
 
@@ -87,6 +93,23 @@ export default new Phaser.Class({
      console.log(this.shelves);
      // the player will collide with this layer
      this.shelves.setCollisionByExclusion([-1]);
+
+     //Get a representation of the map for the server
+     var tileMapX = 16;
+     var zombieMoveMap = [];
+     for(var i=0;i<25;i++) {
+       var col = []
+       var tileMapY = 16;
+
+       for(var j=0;j<18;j++){
+         var idx = this.shelves.getTileAtWorldXY(tileMapX,tileMapY,true).index;
+         col.push({'idx':idx, 'x':tileMapX,'y':tileMapY});
+         tileMapY += 32;
+       }
+       zombieMoveMap.push(col);
+       tileMapX += 32;
+     }
+     console.log(zombieMoveMap);
 
      this.blackRectangle = this.add.graphics({ fillStyle: { color: 0x000000} }).setAlpha(0);
 
@@ -195,13 +218,13 @@ export default new Phaser.Class({
 
 
       this.socket.on('opponentmove', (movementData,zombies,icons,scores) =>  {
-        console.log("Move");
-        console.log(movementData);
-        console.log(socket_ID);
-        console.log(icons);
+        //console.log("Move");
+        //console.log(movementData);
+        //console.log(socket_ID);
+        //console.log(icons);
         //Update Scores
         //if(pair.length > 0) {
-          console.log(scores);
+          //console.log(scores);
           this.p1ScoreTxt.setText('Player 1: '+scores.p1);
           this.p2ScoreTxt.setText('Player 2: '+scores.p2);
         //}
@@ -224,7 +247,7 @@ export default new Phaser.Class({
         }
 
         //Move zombies
-        console.log("Zombies");
+        //console.log("Zombies");
         //console.log(zombies);
         for(var i=0;i<zombies.length;i++) {
           var zombie = this.zombiegroup.children.entries.filter(zomb => zomb.trackingId == zombies[i].id)[0];
@@ -232,12 +255,12 @@ export default new Phaser.Class({
         }
         //Deal with icons
         if(icons.length > 0) {
-          console.log("active sprite");
+          //console.log("active sprite");
           //console.log(this.activeSprite);
-          console.log(icons[0]);
+          //console.log(icons[0]);
           var iconDetail = icons[0].icons[this.activeSprite.iconName];
-          console.log(this.activeSprite.iconName);
-          console.log(iconDetail);
+          //console.log(this.activeSprite.iconName);
+          //console.log(iconDetail);
           //An item is collected
           if(iconDetail.collected) {
             //Get next sprite
@@ -249,12 +272,11 @@ export default new Phaser.Class({
            } else {
              if(this.paired) {
                this.paired = false;
-               //this.registry.set('level',this.level+1);
-               this.registry.set('level',2);
+               this.registry.set('level',this.level+1);
                this.registry.values.socket_ID = socket_ID;
                this.registry.values.socket = this.socket;
                this.registry.values.pairId = this.player.pairId;
-               this.scene.restart();
+               this.socket.emit('levelEnd',socket_ID,this.player.pairId);
             }
            }
             //var nextIcon = icons[0].icons
@@ -263,27 +285,21 @@ export default new Phaser.Class({
         }
       });
 
+      //Scene restart is triggered by server
+      this.socket.on('restartLevel', () =>  {
+        this.scene.restart();
+        //this.scene.stop();
+        //this.scene.start('Multiplayer');
+      });
 
 
-      //Get a representation of the map for the server
-      var tileMapX = 16;
-      var zombieMoveMap = [];
-      for(var i=0;i<25;i++) {
-        var col = []
-        var tileMapY = 16;
 
-        for(var j=0;j<18;j++){
-          var idx = this.shelves.getTileAtWorldXY(tileMapX,tileMapY,true).index;
-          col.push({'idx':idx, 'x':tileMapX,'y':tileMapY});
-          tileMapY += 32;
-        }
-        zombieMoveMap.push(col);
-        tileMapX += 32;
-      }
-      console.log(zombieMoveMap);
+
 
       this.socket.on('pair', function (pair) {
-        //alert("YOOOOO");
+        console.log("I have received a pair");
+        console.log(pair);
+        alert(sc.level);
         //For server
         var zombieData = {'playerId':socket_ID,'zombies':[],'pairId':pair[0].pairId,'map':zombieMoveMap};
         //Send the tilemaps to the server
@@ -305,7 +321,6 @@ export default new Phaser.Class({
 
             if(me.playerNo == 1) {
               alert("I am 1");
-              alert(sc.level);
               // create the player sprite
               var playerLayer = sc.map.getObjectLayer('player')['objects'];
               var player2Layer = sc.map.getObjectLayer('player2')['objects'];

@@ -147,7 +147,7 @@ io.on('connection', function (socket) {
     }
 
     var pair = pairs.filter(p => p.pairId == movementData.pairId);
-    console.log(pair);
+    //console.log(pair);
     //var me = movementData.id;
     //var o = movementData.otherId;
     if(pair[0].moving) {
@@ -214,33 +214,35 @@ io.on('connection', function (socket) {
   });
 
   socket.on('newLevel', function(playerId,pairId) {
-    console.log('A New Level is Ready to start');
-    console.log(restartCount);
-    restartCount++;
+    //console.log(players);
+    //console.log(playerId);
     var player = players.filter(p => p.playerId == playerId)[0];
-    //stop moving
-    var pair = pairs.filter(p => p.pairId == pairId)[0];
-    pair.moving = false;
-    //console.log(zombieData);
-    //remove Zombie data for pair
-    zombieData = zombieData.filter(z => z.pairId != pairId);
-    //zombieData.pop(pairId);
-    //console.log("zombie data now");
-    //console.log(zombieData);
-    //console.log(pair);
-    console.log(player);
+    //console.log(player);
     //Signal pair to client
     var pair = [];
     var otherPlayer = players.filter(p => p.playerId === player.otherPlayer)[0];
-    console.log(player.playerId)
-    console.log(player.playerNo);
-    console.log(otherPlayer.playerNo);
+    //console.log(player.playerId)
+    //console.log(player.playerNo);
+    //console.log(otherPlayer.playerNo);
     player.pairId = pairId;
     otherPlayer.pairId = pairId;
     pair.push(player);
     pair.push(otherPlayer);
+    console.log("I am sending the pair on level restart");
+    console.log(pair);
     io.to(playerId).emit('pair',pair);
     //io.to(otherPlayer.playerId).emit('pair',pair);
+  });
+
+  socket.on('levelEnd', function(playerId,pairId) {
+    //stop moving
+    var pair = pairs.filter(p => p.pairId == pairId)[0];
+    pair.moving = false;
+    //remove Zombie data for pair
+    zombieData = zombieData.filter(z => z.pairId != pairId);
+    //remove icon data for pair
+    iconGroups = iconGroups.filter(ig => ig.pairId != pairId);
+    io.to(playerId).emit('restartLevel');
   });
 
 });
