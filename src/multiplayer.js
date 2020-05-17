@@ -40,14 +40,12 @@ export default new Phaser.Class({
      this.level = this.registry.values.level;
      if(this.level > 1) {
        console.log("Scene Restart");
-       this.isFirstInstance = false;
        var socket_ID = this.registry.values.socket_ID;
        //Tell server nextlevel is ready
        this.socket = this.registry.values.socket;
        this.socket.removeAllListeners();
        this.socket.emit('newLevel',socket_ID,this.registry.values.pairId);
      } else {
-       this.isFirstInstance = true;
        this.socket = io();
        this.socket = io.connect('http://localhost:8081');
        var socket_ID;
@@ -270,13 +268,41 @@ export default new Phaser.Class({
              this.activeSprite.setVisible(true);
              this.activeSprite.setActive(true);
            } else {
-             if(this.paired) {
-               this.paired = false;
-               this.registry.set('level',this.level+1);
-               this.registry.values.socket_ID = socket_ID;
-               this.registry.values.socket = this.socket;
-               this.registry.values.pairId = this.player.pairId;
-               this.socket.emit('levelEnd',socket_ID,this.player.pairId);
+             if(!this.levelComplete) {
+               //this.paired = false;
+               this.levelComplete = true;
+               //Fade out screen
+               var coverScreen = new Phaser.Geom.Rectangle(0, 0, this.map.widthInPixels,this.map.heightInPixels );
+               this.blackRectangle.fillRectShape(coverScreen);
+               this.tweens.add({
+                   targets: this.blackRectangle,
+                   alpha: 1,
+               });
+               this.player.setVisible(false);
+               this.player2.setVisible(false);
+               this.zombiegroup.setVisible(false);
+               if(iconDetail.player == socket_ID) {
+                 var completeTxt = "You Win";
+               } else {
+                 var completeTxt = "You Lose";
+               }
+               this.messageTxt.setText("Level " + this.level + " Complete!\n" + completeTxt).setOrigin(0.5);
+               this.messageTxt.setPosition(400, 300);
+               this.messageTxt.setVisible(true);
+               this.levelCompleteTimer = this.time.addEvent({
+                 delay: 3000,
+                 callback: function() {
+                   //go to next level
+                   this.registry.set('level',this.level+1);
+                   this.registry.values.socket_ID = socket_ID;
+                   this.registry.values.socket = this.socket;
+                   this.registry.values.pairId = this.player.pairId;
+                   this.gameMessage = "Level " + this.level + " Complete";
+                   this.socket.emit('levelEnd',socket_ID,this.player.pairId);
+                 },
+                 callbackScope: this,
+                 loop: false
+               });
             }
            }
             //var nextIcon = icons[0].icons

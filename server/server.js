@@ -209,6 +209,7 @@ io.on('connection', function (socket) {
       pair.otherScore += icon.points;
     }*/
     icon.collected = true;
+    icon.player = player.playerId;
     //If the icon is the last one then the level is over
 
   });
@@ -238,10 +239,13 @@ io.on('connection', function (socket) {
     //stop moving
     var pair = pairs.filter(p => p.pairId == pairId)[0];
     pair.moving = false;
-    //remove Zombie data for pair
-    zombieData = zombieData.filter(z => z.pairId != pairId);
-    //remove icon data for pair
-    iconGroups = iconGroups.filter(ig => ig.pairId != pairId);
+    var player = players.filter(p => p.playerId == playerId)[0];
+    if(player.playerNo == 1) {
+      //remove Zombie data for pair
+      zombieData = zombieData.filter(z => z.pairId != pairId);
+      //remove icon data for pair
+      iconGroups = iconGroups.filter(ig => ig.pairId != pairId);
+    }
     io.to(playerId).emit('restartLevel');
   });
 
