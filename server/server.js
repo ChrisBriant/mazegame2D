@@ -139,20 +139,19 @@ io.on('connection', function (socket) {
     //console.log(movementData);
     //console.log(pairs);
     if(pair.playerId == movementData.id) {
-      p2Score = players.filter(p => p.playerId == movementData.id)[0].score;
-      p1Score = players.filter(p => p.playerId == movementData.otherId)[0].score;
+      p2 = players.filter(p => p.playerId == movementData.id)[0];
+      p1 = players.filter(p => p.playerId == movementData.otherId)[0];
     } else {
-      p1Score = players.filter(p => p.playerId == movementData.id)[0].score;
-      p2Score = players.filter(p => p.playerId == movementData.otherId)[0].score;
+      p1 = players.filter(p => p.playerId == movementData.id)[0];
+      p2 = players.filter(p => p.playerId == movementData.otherId)[0];
     }
 
     var pair = pairs.filter(p => p.pairId == movementData.pairId);
-    //console.log(pair);
-    //var me = movementData.id;
-    //var o = movementData.otherId;
+    console.log("Player");
+    console.log(p1);
     if(pair[0].moving) {
-  	   io.to(movementData.otherId).emit('opponentmove',movementData,zombs,iconGr,{'p1':p1Score,'p2':p2Score});
-  	   io.to(movementData.id).emit('opponentmove',movementData,zombs,iconGr,{'p1':p1Score,'p2':p2Score});
+  	   io.to(movementData.otherId).emit('opponentmove',movementData,zombs,iconGr,{'p1':p1.score,'p2':p2.score},{'p1':p1.lives,'p2':p2.lives});
+  	   io.to(movementData.id).emit('opponentmove',movementData,zombs,iconGr,{'p1':p1.score,'p2':p2.score},{'p1':p1.lives,'p2':p2.lives});
     }
   });
 
@@ -247,6 +246,18 @@ io.on('connection', function (socket) {
       iconGroups = iconGroups.filter(ig => ig.pairId != pairId);
     }
     io.to(playerId).emit('restartLevel');
+  });
+
+
+  socket.on('playerDied', function(playerId,pairId) {
+    console.log("Player Died");
+    //stop moving
+    var pair = pairs.filter(p => p.pairId == pairId)[0];
+    var player = players.filter(p => p.playerId == playerId)[0];
+    console.log(pair);
+    player.lives--;
+    io.to(pair.playerId).emit('playerDeath',player);
+    io.to(pair.otherId).emit('playerDeath',player);
   });
 
 });

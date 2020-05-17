@@ -60,7 +60,7 @@ export default new Phaser.Class({
      this.gameMessage = "";
      this.levelComplete = false;
      this.playingDeathSeq = false;
-     this.invincible = true;
+     this.invincible = false;
      this.currentDirection = "ST";
      this.scoring = false;
 
@@ -215,7 +215,7 @@ export default new Phaser.Class({
 
 
 
-      this.socket.on('opponentmove', (movementData,zombies,icons,scores) =>  {
+      this.socket.on('opponentmove', (movementData,zombies,icons,scores,lives) =>  {
         //console.log("Move");
         //console.log(movementData);
         //console.log(socket_ID);
@@ -225,6 +225,8 @@ export default new Phaser.Class({
           //console.log(scores);
           this.p1ScoreTxt.setText('Player 1: '+scores.p1);
           this.p2ScoreTxt.setText('Player 2: '+scores.p2);
+          this.p1LivesTxt.setText('L: '+lives.p1);
+          this.p2LivesTxt.setText('L: '+lives.p2);
         //}
         if(movementData.otherId == socket_ID) {
           this.moveOtherPlayer(movementData.x,movementData.y);
@@ -319,13 +321,60 @@ export default new Phaser.Class({
       });
 
 
+      this.socket.on('playerDeath', (player) => {
+        //Handle player death
+        this.invincible = true;
+        var deathTxt = "";
+        console.log("Player Died");
+        console.log(player);
+        console.log(typeof this.player.playerId);
+        //this.scene.pause();
+
+        if(player.playerId == this.player.playerId) {
+          this.player.dead = true;
+          deathTxt = "You Died";
+        } else {
+          this.player2.dead = true;
+          deathTxt = "Your Opponent Died";
+        }
+
+        //Add death screen text
+        var coverScreen = new Phaser.Geom.Rectangle(0, 0, this.map.widthInPixels,this.map.heightInPixels );
+        this.blackRectangle.fillRectShape(coverScreen);
+        this.tweens.add({
+            targets: this.blackRectangle,
+            alpha: 1,
+        });
+        this.player.setVisible(false);
+        this.player2.setVisible(false);
+        this.zombiegroup.setVisible(false);
+        this.messageTxt.setText(deathTxt).setOrigin(0.5);
+        this.messageTxt.setPosition(400, 300);
+        this.messageTxt.setVisible(true);
+        this.respawnTimer = this.time.addEvent({
+          delay: 3000,
+          callback: function() {
+            //go to next level
+            this.blackRectangle.clear();
+            this.player.setVisible(true);
+            this.player2.setVisible(true);
+            this.zombiegroup.setVisible(true);
+            this.invincible = false;
+            this.player.dead = false;
+            this.player2.dead = false;
+            this.playingDeathSeq = false;
+          },
+          callbackScope: this,
+          loop: false
+        });
+      });
 
 
 
       this.socket.on('pair', function (pair) {
         console.log("I have received a pair");
         console.log(pair);
-        alert(sc.level);
+
         //For server
         var zombieData = {'playerId':socket_ID,'zombies':[],'pairId':pair[0].pairId,'map':zombieMoveMap};
         //Send the tilemaps to the server
@@ -346,17 +395,19 @@ export default new Phaser.Class({
             console.log(otherPlayer);
 
             if(me.playerNo == 1) {
-              alert("I am 1");
+              //alert("I am 1");
               // create the player sprite
               var playerLayer = sc.map.getObjectLayer('player')['objects'];
               var player2Layer = sc.map.getObjectLayer('player2')['objects'];
               //sc.player = sc.physics.add.sprite(playerLayer[0].x+16, playerLayer[0].y-16, 'player',0);
               //TEST
-              sc.player = sc.physics.add.sprite(560, 216, 'player',0);
+              //sc.player = sc.physics.add.sprite(560, 216, 'player',0);
+              //Near zombie
+              sc.player = sc.physics.add.sprite(752, 128, 'player',0);
+
               sc.player2 = sc.physics.add.sprite(player2Layer[0].x+16, player2Layer[0].y-16, 'player2',0);
             } else {
-              alert("I am 2");
-              alert(sc.level);
+              //alert("I am 2");
               var playerLayer = sc.map.getObjectLayer('player2')['objects'];
               var player2Layer = sc.map.getObjectLayer('player')['objects'];
               sc.player = sc.physics.add.sprite(playerLayer[0].x+16, playerLayer[0].y-16, 'player2',0);
@@ -615,7 +666,7 @@ export default new Phaser.Class({
               if(this.player.playerNo == 1) {
                 this.player.anims.play('walk',true);
               } else {
-                this.player.anims.play('p2walk',true);
+                //this.player.anims.play('p2walk',true);
               }
               this.currentDirection = "DN";
               this.player.y+=2;
@@ -625,7 +676,7 @@ export default new Phaser.Class({
               if(this.player.playerNo == 1) {
                 this.player.anims.play('reverse',true);
               } else {
-                this.player.anims.play('p2reverse',true);
+                //this.player.anims.play('p2reverse',true);
               }
               this.currentDirection = "UP";
               this.player.y-=2;
@@ -635,7 +686,7 @@ export default new Phaser.Class({
               if(this.player.playerNo == 1) {
                 this.player.anims.play('walk',true);
               } else {
-                this.player.anims.play('p2walk',true);
+                //this.player.anims.play('p2walk',true);
               }
               this.currentDirection = "R";
               this.player.x+=2;
@@ -645,7 +696,7 @@ export default new Phaser.Class({
               if(this.player.playerNo == 1) {
                 this.player.anims.play('walk',true);
               } else {
-                this.player.anims.play('p2walk',true);
+                //this.player.anims.play('p2walk',true);
               }
               this.currentDirection = "L";
               this.player.x-=2;
@@ -665,13 +716,20 @@ export default new Phaser.Class({
             if(this.player.playerNo == 1) {
               this.player.anims.play('death',true);
             } else {
-              this.player.anims.play('p2death',true);
+              //this.player.anims.play('p2death',true);
             }
             this.registry.values.lives--;
+            /*
             if (this.registry.values.lives != -1) {
               this.livesTxt.setText('Lives: ' +  this.registry.values.lives);
-            }
+            }*/
           }
+        }
+
+        if(this.player2.dead) {
+          this.player2.anims.play('p2death',true);
+        } else {
+          this.player2.anims.play('p2walk',true);
         }
         //Get the active icon area and check for overlap
         if(!this.levelComplete) {
@@ -718,9 +776,10 @@ export default new Phaser.Class({
       }
   },
 
+  /*
   createPlayer: function (player) {
     alert(player);
-  },
+  },*/
 
   /*
   moveZombie: function (z) {
@@ -794,6 +853,15 @@ export default new Phaser.Class({
   zombieEatPlayer: function(zombie) {
     var deathRect = new Phaser.Geom.Rectangle(this.player.body.x, this.player.body.y, 32, 32);
     if(deathRect.contains(zombie.x,zombie.y) && !this.player.dead && !this.invincible) {
+      if (this.registry.values.lives > 0 && !this.player.dead) {
+        this.player.dead = true;
+        this.socket.emit('playerDied',this.player.playerId,this.player.pairId);
+      } else {
+        //Game over for player
+        this.socket.emit('playerGameOver',this.player.playerId,this.player.pairId);
+      }
+
+      /*
       console.log("Player Died");
       this.player.dead = true;
 
@@ -831,7 +899,7 @@ export default new Phaser.Class({
         this.messageTxt.setText(this.gameMessage).setOrigin(0.5);
         this.messageTxt.setPosition(400, 300);
         this.messageTxt.setVisible(true);
-      }
+      }*/
 
     }
   }
