@@ -82,6 +82,24 @@ io.on('connection', function (socket) {
   // when a player disconnects, remove them from our players object
   socket.on('disconnect', function () {
     console.log('user disconnected: ', socket.id);
+    //get pair
+    var player = players.filter(p => p.playerId == socket.id);
+    console.log(player);
+    var pair = pairs.filter(p => p.id == player.pairId);
+    if(pair.length > 0)
+      console.log(pair);
+      if(!pair[0].gameOver) {
+        //Signal that he other player has gone
+        //Need to send scores
+        io.to(player.otherPlayer).emit('otherPlayerDisconnected',player);
+      }
+      pairId = pair[0].id;
+      //Cleanup
+      iconGroups = iconGroups.filter(gr => gr.pairId != pairId);
+      pairs = pairs.filter(p => p.pairId != pairId);
+      zombieData = zombieData.filter(z => z.pairId != pairId);
+    }
+    //remove player
     players = players.filter(p => p.playerId != socket.id);
     //delete players[socket.id];
     // emit a message to all players to remove this player
@@ -258,6 +276,22 @@ io.on('connection', function (socket) {
     player.lives--;
     io.to(pair.playerId).emit('playerDeath',player);
     io.to(pair.otherId).emit('playerDeath',player);
+  });
+
+
+  socket.on('playerLivesGone', function(playerId,pairId) {
+    console.log("Player Game Over");
+    //stop moving
+    var pair = pairs.filter(p => p.pairId == pairId)[0];
+    var player = players.filter(p => p.playerId == playerId)[0];
+    var otherScore = players.filter(p => p.playerId == player.otherPlayer)[0].score;
+    console.log(pair);
+    player.lives--;
+    io.to(pair.playerId).emit('playerGameOver',player,otherScore);
+    io.to(pair.otherId).emit('playerGameOver',player,otherScore);
+    //Might be needed later
+    pair.gameOver = true;
+    pair.moving = false;
   });
 
 });

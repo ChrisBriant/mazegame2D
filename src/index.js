@@ -22,6 +22,7 @@ var game = new Phaser.Game(config);
 //Set Global
 game.registry.set('score',0);
 game.registry.set('level',1);
-game.registry.set('lives',3);
+game.registry.set('lives',0);
 //Multiplayer Keys
 //game.registry.set('multiplayer',false);
+game.registry.set('wins',{1:false,2:false,3:false,4:false,5:false})

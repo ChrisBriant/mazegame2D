@@ -216,18 +216,12 @@ export default new Phaser.Class({
 
 
       this.socket.on('opponentmove', (movementData,zombies,icons,scores,lives) =>  {
-        //console.log("Move");
-        //console.log(movementData);
-        //console.log(socket_ID);
-        //console.log(icons);
-        //Update Scores
-        //if(pair.length > 0) {
-          //console.log(scores);
-          this.p1ScoreTxt.setText('Player 1: '+scores.p1);
-          this.p2ScoreTxt.setText('Player 2: '+scores.p2);
-          this.p1LivesTxt.setText('L: '+lives.p1);
-          this.p2LivesTxt.setText('L: '+lives.p2);
-        //}
+        //Scores and Lives
+        this.p1ScoreTxt.setText('Player 1: '+scores.p1);
+        this.p2ScoreTxt.setText('Player 2: '+scores.p2);
+        this.p1LivesTxt.setText('L: '+lives.p1);
+        this.p2LivesTxt.setText('L: '+lives.p2);
+
         if(movementData.otherId == socket_ID) {
           this.moveOtherPlayer(movementData.x,movementData.y);
           //Opponent animations
@@ -247,20 +241,13 @@ export default new Phaser.Class({
         }
 
         //Move zombies
-        //console.log("Zombies");
-        //console.log(zombies);
         for(var i=0;i<zombies.length;i++) {
           var zombie = this.zombiegroup.children.entries.filter(zomb => zomb.trackingId == zombies[i].id)[0];
           zombie.setPosition(zombies[i].x,zombies[i].y);
         }
         //Deal with icons
         if(icons.length > 0) {
-          //console.log("active sprite");
-          //console.log(this.activeSprite);
-          //console.log(icons[0]);
           var iconDetail = icons[0].icons[this.activeSprite.iconName];
-          //console.log(this.activeSprite.iconName);
-          //console.log(iconDetail);
           //An item is collected
           if(iconDetail.collected) {
             //Get next sprite
@@ -273,6 +260,7 @@ export default new Phaser.Class({
              if(!this.levelComplete) {
                //this.paired = false;
                this.levelComplete = true;
+               var win;
                //Fade out screen
                var coverScreen = new Phaser.Geom.Rectangle(0, 0, this.map.widthInPixels,this.map.heightInPixels );
                this.blackRectangle.fillRectShape(coverScreen);
@@ -285,8 +273,10 @@ export default new Phaser.Class({
                this.zombiegroup.setVisible(false);
                if(iconDetail.player == socket_ID) {
                  var completeTxt = "You Win";
+                 win = true;
                } else {
                  var completeTxt = "You Lose";
+                 win = false;
                }
                this.messageTxt.setText("Level " + this.level + " Complete!\n" + completeTxt).setOrigin(0.5);
                this.messageTxt.setPosition(400, 300);
@@ -299,7 +289,10 @@ export default new Phaser.Class({
                    this.registry.values.socket_ID = socket_ID;
                    this.registry.values.socket = this.socket;
                    this.registry.values.pairId = this.player.pairId;
-                   this.gameMessage = "Level " + this.level + " Complete";
+                   //this.gameMessage = "Level " + this.level + " Complete";
+                   var wins = this.registry.values.wins;
+                   wins[this.level] = win;
+                   this.registry.set('wins',wins);
                    this.socket.emit('levelEnd',socket_ID,this.player.pairId);
                  },
                  callbackScope: this,
@@ -307,7 +300,6 @@ export default new Phaser.Class({
                });
             }
            }
-            //var nextIcon = icons[0].icons
             this.scoring = false;
           }
         }
@@ -363,6 +355,58 @@ export default new Phaser.Class({
             this.player.dead = false;
             this.player2.dead = false;
             this.playingDeathSeq = false;
+          },
+          callbackScope: this,
+          loop: false
+        });
+      });
+
+
+
+      this.socket.on('playerGameOver', (player,otherScore) => {
+        //Handle player death
+        this.invincible = true;
+        var deathTxt = "";
+        var win;
+        console.log("No Lives Lost");
+        console.log(player);
+        console.log(typeof this.player.playerId);
+        //this.scene.pause();
+
+        if(player.playerId == this.player.playerId) {
+          win = false;
+          this.player.dead = true;
+          deathTxt = "You Have Lost \n Your Opponent Wins";
+        } else {
+          win = true;
+          this.player2.dead = true;
+          deathTxt = "You Have Won \n Your Opponent Has Died";
+        }
+
+        //Add death screen text
+        var coverScreen = new Phaser.Geom.Rectangle(0, 0, this.map.widthInPixels,this.map.heightInPixels );
+        this.blackRectangle.fillRectShape(coverScreen);
+        this.tweens.add({
+            targets: this.blackRectangle,
+            alpha: 1,
+        });
+        this.player.setVisible(false);
+        this.player2.setVisible(false);
+        this.zombiegroup.setVisible(false);
+        this.icongroup.setVisible(false);
+        this.messageTxt.setText(deathTxt).setOrigin(0.5);
+        this.messageTxt.setPosition(400, 300);
+        this.messageTxt.setVisible(true);
+        this.respawnTimer = this.time.addEvent({
+          delay: 3000,
+          callback: function() {
+            var wins = this.registry.values.wins;
+            wins[this.level] = win;
+            this.registry.set('wins',wins);
+            //Draw the player stats
+            this.drawGameOverPanel(win,player.score,otherScore)
+            //Tell the server the game has finished
+
           },
           callbackScope: this,
           loop: false
@@ -743,71 +787,11 @@ export default new Phaser.Class({
                 this.scoring = true;
                 this.socket.emit('collected',this.player.pairId,this.player.playerId,this.activeSprite.iconName);
               }
-            /*
-            } else {
-              this.levelComplete = true;
-              this.score += this.activeSprite.points;
-              this.scoreTxt.setText('Score: '+this.score);
-              this.points.setText(this.activeSprite.points);
-              this.points.setPosition(this.activeSprite.x, this.activeSprite.y-16);
-              this.points.setVisible(true);
-              this.activeSprite.destroy();
-              //Scene Transition
-              this.gameMessage = "Level " + this.level + " Complete";
-              this.messageTxt.setText(this.gameMessage).setOrigin(0.5);
-              this.messageTxt.setPosition(400, 300);
-              this.messageTxt.setVisible(true);
-              this.levelCompleteTimer = this.time.addEvent({
-                delay: 3000,
-                callback: function() {
-                  //go to next level
-                  this.registry.set('score',this.score);
-                  this.registry.set('level',this.level+1);
-                  //this.load.start();
-                  this.scene.restart();
-                },
-                callbackScope: this,
-                loop: false
-              });
-            }*/
           }
         }
 
       }
   },
-
-  /*
-  createPlayer: function (player) {
-    alert(player);
-  },*/
-
-  /*
-  moveZombie: function (z) {
-
-    var adjacentTiles = [];
-    adjacentTiles[0] = this.shelves.getTileAtWorldXY(zombie.x,zombie.y+32,true);
-    adjacentTiles[1] = this.shelves.getTileAtWorldXY(zombie.x,zombie.y-32,true);
-    adjacentTiles[2] = this.shelves.getTileAtWorldXY(zombie.x+32,zombie.y,true);
-    adjacentTiles[3] = this.shelves.getTileAtWorldXY(zombie.x-32,zombie.y,true);
-    //Filter the tiles which are not blocked
-    var spaces = adjacentTiles.filter(tile => tile.index == -1);
-    spaces = spaces.filter(t => !zombie.visitedTiles.includes(t) );
-    if(spaces.length > 0){
-      var nextMoveIdx = randomNumber(0,spaces.length);
-      zombie.visitedTiles.push(spaces[nextMoveIdx]);
-      zombie.x = spaces[nextMoveIdx].pixelX + 16
-      zombie.y = spaces[nextMoveIdx].pixelY + 16
-    } else {
-      //clear the visted path
-      zombie.visitedTiles = [];
-    }
-    //console.log(adjacentTiles);
-    //this.scene.pause();
-
-    var zombie = this.zombiegroup.children.entries.filter(zomb => zomb.trackingId == z.id)[0];
-    zombie.x = z.x;
-    zombie.y = z.y;
-  },*/
 
   moveOtherPlayer: function (x,y) {
     //console.log(x)
@@ -831,20 +815,6 @@ export default new Phaser.Class({
     }
   },
 
-  /*
-  sendTilesToServer: function(z) {
-    //console.log("Here");
-    //console.log(z[0].x);
-    var adjacentTiles = [];
-    //var zombieForTiles = this.zombiegroup.children.entries.filter(zombie => zombie.trackingId == z.id );
-    //console.log(this.shelves);
-    adjacentTiles[0] = this.shelves.getTileAtWorldXY(z[0].x,z[0].y+32,true);
-    adjacentTiles[1] = this.shelves.getTileAtWorldXY(z[0].x,z[0].y-32,true);
-    adjacentTiles[2] = this.shelves.getTileAtWorldXY(z[0].x+32,z[0].y,true);
-    adjacentTiles[3] = this.shelves.getTileAtWorldXY(z[0].x-32,z[0].y,true);
-    //console.log(adjacentTiles);
-  },*/
-
   sendMovementData: function(player) {
     console.log(player);
 
@@ -858,51 +828,78 @@ export default new Phaser.Class({
         this.socket.emit('playerDied',this.player.playerId,this.player.pairId);
       } else {
         //Game over for player
-        this.socket.emit('playerGameOver',this.player.playerId,this.player.pairId);
+        this.socket.emit('playerLivesGone',this.player.playerId,this.player.pairId);
       }
+    }
+  },
 
-      /*
-      console.log("Player Died");
-      this.player.dead = true;
-
-      //Fade out screen
-      var coverScreen = new Phaser.Geom.Rectangle(0, 0, this.map.widthInPixels,this.map.heightInPixels );
-      this.blackRectangle.fillRectShape(coverScreen);
-      this.tweens.add({
-          targets: this.blackRectangle,
-          alpha: 1,
+  drawGameOverPanel: function(win,myScore,otherScore) {
+    var panel = this.add.graphics({ fillStyle: { color: 0x7488a8} }).setAlpha(1);
+    var panelShape = new Phaser.Geom.Rectangle(200, 100, 400,400 );
+    panel.fillRectShape(panelShape);
+    this.add.text(400, 120, 'Game Over', {
+        fontSize: '20px',
+        fill: '#c9d132'
+    }).setOrigin(0.5);
+    if(win) {
+      var message = "You Win";
+    } else {
+      var message = "You Lose";
+    }
+    this.add.text(400, 150, message, {
+        fontSize: '20px',
+        fill: '#ffffff'
+    }).setOrigin(0.5);
+    this.add.text(320, 180, 'You', {
+        fontSize: '20px',
+        fill: '#c9d132'
+    });
+    this.add.text(420, 180, 'Oponenet', {
+        fontSize: '20px',
+        fill: '#c9d132'
+    });
+    var textPos = 210;
+    var wins = this.registry.values.wins;
+    for(var i=1;i<=this.level;i++) {
+      this.add.text(220, textPos, 'Level '+i, {
+          fontSize: '20px',
+          fill: '#c9d132'
       });
 
-      if (this.registry.values.lives > 0) {
-
-        this.gameMessage = "You Died!";
-        this.messageTxt.setText(this.gameMessage).setOrigin(0.5);
-        this.messageTxt.setPosition(400, 300);
-        this.messageTxt.setVisible(true);
-        //Respawn player
-        this.respawnTimer = this.time.addEvent({
-          delay: 3000,
-          callback: function() {
-            this.player.dead = false;
-            this.playingDeathSeq = false;
-            //this.fadeToBlack.destroy();
-            //this.removeTween(this.fadeToBlack);
-            this.blackRectangle.clear();
-            console.log(this.tweens);
-          },
-          callbackScope: this,
-          loop: false
+      if(wins[i]) {
+        this.add.text(320, textPos, 'Win', {
+            fontSize: '20px',
+            fill: '#ffffff'
         });
-
+        this.add.text(420, textPos, 'Lose', {
+            fontSize: '20px',
+            fill: '#ffffff'
+        });
       } else {
-        this.gameMessage = "Game Over";
-        this.messageTxt.setText(this.gameMessage).setOrigin(0.5);
-        this.messageTxt.setPosition(400, 300);
-        this.messageTxt.setVisible(true);
-      }*/
-
+        this.add.text(320, textPos, 'Lose', {
+            fontSize: '20px',
+            fill: '#ffffff'
+        });
+        this.add.text(420, textPos, 'Win', {
+            fontSize: '20px',
+            fill: '#ffffff'
+        });
+      }
+      textPos += 30;
     }
+    this.add.text(220, textPos, 'Score: ', {
+        fontSize: '20px',
+        fill: '#c9d132'
+    });
+    this.add.text(320, textPos, myScore, {
+        fontSize: '20px',
+        fill: '#ffffff'
+    });
+    this.add.text(420, textPos, otherScore, {
+        fontSize: '20px',
+        fill: '#ffffff'
+    });
+    this.socket.disconnect();
   }
-
 
 });
