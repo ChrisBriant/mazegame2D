@@ -60,7 +60,7 @@ export default new Phaser.Class({
      this.gameMessage = "";
      this.levelComplete = false;
      this.playingDeathSeq = false;
-     this.invincible = false;
+     this.invincible = true;
      this.currentDirection = "ST";
      this.scoring = false;
 
@@ -414,6 +414,15 @@ export default new Phaser.Class({
       });
 
 
+      this.socket.on('otherPlayerDisconnected', (player,otherScore) => {
+        console.log("Disconnect");
+        console.log(socket_ID);
+        console.log(player);
+        console.log(otherScore);
+
+        //Need to add player quit code below is opposite of game over code params
+      });
+
 
       this.socket.on('pair', function (pair) {
         console.log("I have received a pair");
@@ -566,10 +575,11 @@ export default new Phaser.Class({
       //});
 
 
+      /*
       this.socket.on('zombieRequestTiles', z => {
         this.sendTilesToServer(z);
       });
-
+      */
 
       // player animations
       this.anims.create({
@@ -623,64 +633,13 @@ export default new Phaser.Class({
           repeat: 0
       });
 
-
-      // tiles for the ground layer
-
-      //var iconTiles = this.map.addTilesetImage('icons');
-
-      //world layer
-
-
-
-
       // set the boundaries of our game world
       this.physics.world.bounds.width = this.map.widthInPixels;
       this.physics.world.bounds.height = this.map.heightInPixels;
-
-
-      //TESTING
-      //this.player = this.physics.add.sprite(560, 216, 'player',0);
-
-
-      //this.iconLayer = this.map.createDynamicLayer('icons', iconTiles, 0, 0);
-      //this.icons = this.map.createFromObjects('icons', 'iconsprites', { key: 'icon' });
-
-      //console.log(this.icons);
-
-
-
-
-      //For testing scene transition
-      /*
-      this.activeSprite.destroy();
-      this.activeSprite = this.icongroup.children.entries.filter(icon => icon.collectOrder == 6)[0]
-      console.log(this.activeSprite);
-      this.activeSprite.setVisible(true);
-      this.activeSprite.setActive(true);
-      */
-      console.log(this.activeSprite);
-
-
-
-      /*
-      this.timer = this.time.addEvent({
-        delay: 500,
-        callback: function() {
-          //Zombie movement
-          this.zombiegroup.children.entries.forEach(zombie => this.moveZombie(zombie));
-        },
-        callbackScope: this,
-        loop: true
-      });*/
-
       this.cursors = this.input.keyboard.createCursorKeys();
-
-
 
       // set background color, so the sky is not black
       //this.cameras.main.setBackgroundColor('#ccccff');
-
-
   },
 
 

@@ -83,21 +83,35 @@ io.on('connection', function (socket) {
   socket.on('disconnect', function () {
     console.log('user disconnected: ', socket.id);
     //get pair
-    var player = players.filter(p => p.playerId == socket.id);
-    console.log(player);
-    var pair = pairs.filter(p => p.id == player.pairId);
-    if(pair.length > 0)
-      console.log(pair);
+    var player = players.filter(p => p.playerId == socket.id)[0];
+    var otherPlayer = players.filter(p => p.playerId == player.otherPlayer)[0];
+    console.log(players);
+    var pair = pairs.filter(p => p.pairId == player.pairId);
+    if(pair.length > 0) {
+      //console.log(pair);
       if(!pair[0].gameOver) {
         //Signal that he other player has gone
         //Need to send scores
-        io.to(player.otherPlayer).emit('otherPlayerDisconnected',player);
+        io.to(player.otherPlayer).emit('otherPlayerDisconnected',player,otherPlayer.score);
       }
-      pairId = pair[0].id;
+      var pairId = pair[0].pairId;
       //Cleanup
+      /*
+      console.log("before");
+      console.log(pairId);
+      console.log(iconGroups);
+      console.log(pairs);
+      console.log(zombieData);
+      */
       iconGroups = iconGroups.filter(gr => gr.pairId != pairId);
       pairs = pairs.filter(p => p.pairId != pairId);
       zombieData = zombieData.filter(z => z.pairId != pairId);
+      /*
+      console.log("after");
+      console.log(iconGroups);
+      console.log(pairs);
+      console.log(zombieData);
+      */
     }
     //remove player
     players = players.filter(p => p.playerId != socket.id);
@@ -109,20 +123,22 @@ io.on('connection', function (socket) {
   // when players are paired, notify the players it is ready
   socket.on('player2Ready', function (player) {
   	console.log("paired");
-
+    var player = players.filter(p => p.playerId === player.player.playerId)[0];
   	var pair = [];
   	//pair.push(players.filter(p => p.playerId == player.otherPlayer)[0]);
   	//pair.push(player);
-  	var otherPlayer = players.filter(p => p.playerId === player.player.otherPlayer)[0];
-  	pair.push(player.player);
-  	pair.push(otherPlayer);
+  	var otherPlayer = players.filter(p => p.playerId === player.otherPlayer)[0];
   	//Assign a pair ID
-  	player.player.pairId = pairId;
+  	player.pairId = pairId;
   	otherPlayer.pairId = pairId;
+    console.log(player);
+    console.log(otherPlayer);
+    pair.push(player);
+    pair.push(otherPlayer);
   	//Add to the pair array and then send the signal to the client that the pair is ready
-  	pairs.push({'pairId':pairId,'playerId':player.player.playerId,'playerScore':0,'playerLives':3,'otherId':otherPlayer.playerId,'otherScore':0,'otherLives':3,'level':1,'moving':false});
+  	pairs.push({'pairId':pairId,'playerId':player.playerId,'playerScore':0,'playerLives':3,'otherId':otherPlayer.playerId,'otherScore':0,'otherLives':3,'level':1,'moving':false});
   	pairId++;
-  	io.to(player.player.playerId).emit('pair',pair);
+  	io.to(player.playerId).emit('pair',pair);
   	io.to(otherPlayer.playerId).emit('pair',pair);
   	//io.to(player.player.playerId).emit('pair',player.player);
   	//io.to(otherPlayer.playerId).emit('pair',otherPlayer);
@@ -144,32 +160,37 @@ io.on('connection', function (socket) {
   socket.on('movement', function (movementData) {
   	//console.log(movementData);
   	//Get zombie position to send as well
-  	var zombies = zombieData.filter(z => z.pairId == movementData.pairId);
-    if(zombies.length == 0) {
-      var zombs = [];
-    } else {
-      var zombs = zombies[0].zombies;
-    }
-    //Get the icons to send
-    var iconGr = iconGroups.filter(ig => ig.pairId == movementData.pairId);
-    //Get the scores
-    var pair = pairs.filter(p => p.pairId == movementData.pairId)[0];
-    //console.log(movementData);
-    //console.log(pairs);
-    if(pair.playerId == movementData.id) {
-      p2 = players.filter(p => p.playerId == movementData.id)[0];
-      p1 = players.filter(p => p.playerId == movementData.otherId)[0];
-    } else {
-      p1 = players.filter(p => p.playerId == movementData.id)[0];
-      p2 = players.filter(p => p.playerId == movementData.otherId)[0];
-    }
-
     var pair = pairs.filter(p => p.pairId == movementData.pairId);
-    console.log("Player");
-    console.log(p1);
-    if(pair[0].moving) {
-  	   io.to(movementData.otherId).emit('opponentmove',movementData,zombs,iconGr,{'p1':p1.score,'p2':p2.score},{'p1':p1.lives,'p2':p2.lives});
-  	   io.to(movementData.id).emit('opponentmove',movementData,zombs,iconGr,{'p1':p1.score,'p2':p2.score},{'p1':p1.lives,'p2':p2.lives});
+    //console.log(pair);
+    if(pair.length > 0) {
+      pair = pair[0];
+    	var zombies = zombieData.filter(z => z.pairId == movementData.pairId);
+      if(zombies.length == 0) {
+        var zombs = [];
+      } else {
+        var zombs = zombies[0].zombies;
+      }
+      //Get the icons to send
+      var iconGr = iconGroups.filter(ig => ig.pairId == movementData.pairId);
+      //Get the scores
+
+      //console.log(movementData);
+      //console.log(pairs);
+      if(pair.playerId == movementData.id) {
+        p2 = players.filter(p => p.playerId == movementData.id)[0];
+        p1 = players.filter(p => p.playerId == movementData.otherId)[0];
+      } else {
+        p1 = players.filter(p => p.playerId == movementData.id)[0];
+        p2 = players.filter(p => p.playerId == movementData.otherId)[0];
+      }
+
+      var pair = pairs.filter(p => p.pairId == movementData.pairId);
+      //console.log("Player");
+      //console.log(p1);
+      if(pair[0].moving) {
+    	   io.to(movementData.otherId).emit('opponentmove',movementData,zombs,iconGr,{'p1':p1.score,'p2':p2.score},{'p1':p1.lives,'p2':p2.lives});
+    	   io.to(movementData.id).emit('opponentmove',movementData,zombs,iconGr,{'p1':p1.score,'p2':p2.score},{'p1':p1.lives,'p2':p2.lives});
+      }
     }
   });
 
