@@ -1,6 +1,8 @@
 import Phaser from "phaser";
 import Level1 from "./level1.js";
 import Multiplayer from "./multiplayer.js";
+import WebfontLoaderPlugin from 'phaser3-rex-plugins/plugins/webfontloader-plugin.js';
+import RoundRectanglePlugin from 'phaser3-rex-plugins/plugins/roundrectangle-plugin.js';
 //import ChangeLevel from "./changelevel.js";
 
 var config = {
@@ -13,6 +15,18 @@ var config = {
             gravity: {y: 500},
             debug: true
         }
+    },
+    plugins: {
+      global: [{
+          key: 'rexRoundRectanglePlugin',
+          plugin: RoundRectanglePlugin,
+          start: true
+      },
+      {
+        key: 'rexWebfontLoader',
+        plugin: WebfontLoaderPlugin,
+        start: true
+      },]
     },
     scene: [Multiplayer]
 }

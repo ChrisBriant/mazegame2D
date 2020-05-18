@@ -75,6 +75,58 @@ export default new Phaser.Class({
      //var sceneCameras = this.cameras;
      var sc = this;
 
+     // player animations
+     this.anims.create({
+         key: 'walk',
+         frames: this.anims.generateFrameNames('player', {prefix: 'man ',suffix: '.aseprite', start: 0, end: 11}),
+         frameRate: 10,
+         repeat: -1
+     });
+     this.anims.create({
+         key: 'reverse',
+         frames: this.anims.generateFrameNames('player', {prefix: 'man ',suffix: '.aseprite', start: 12, end: 23}),
+         frameRate: 10,
+         repeat: -1
+     });
+     this.anims.create({
+         key: 'idle',
+         frames: this.anims.generateFrameNames('player', {prefix: 'man ',suffix: '.aseprite', start: 11, end: 11}),
+         frameRate: 10,
+         repeat: -1
+     });
+     this.anims.create({
+         key: 'death',
+         frames: this.anims.generateFrameNames('player', {prefix: 'man ',suffix: '.aseprite', start: 48, end: 56}),
+         frameRate: 10,
+         repeat: 0
+     });
+
+     // player2 animations
+     this.anims.create({
+         key: 'p2walk',
+         frames: this.anims.generateFrameNames('player2', {prefix: 'player2 ',suffix: '.aseprite', start: 0, end: 11}),
+         frameRate: 10,
+         repeat: -1
+     });
+     this.anims.create({
+         key: 'p2reverse',
+         frames: this.anims.generateFrameNames('player2', {prefix: 'player2 ',suffix: '.aseprite', start: 12, end: 23}),
+         frameRate: 10,
+         repeat: -1
+     });
+     this.anims.create({
+         key: 'p2idle',
+         frames: this.anims.generateFrameNames('player2', {prefix: 'player2 ',suffix: '.aseprite', start: 11, end: 11}),
+         frameRate: 10,
+         repeat: -1
+     });
+     this.anims.create({
+         key: 'p2death',
+         frames: this.anims.generateFrameNames('player2', {prefix: 'player2 ',suffix: '.aseprite', start: 24, end: 32}),
+         frameRate: 10,
+         repeat: 0
+     });
+
      // load the map
      this.map = this.make.tilemap({key: 'map' + this.level});
      var levelTiles = this.map.addTilesetImage('tilemap');
@@ -223,8 +275,10 @@ export default new Phaser.Class({
         this.p2LivesTxt.setText('L: '+lives.p2);
 
         if(movementData.otherId == socket_ID) {
-          this.moveOtherPlayer(movementData.x,movementData.y);
+          this.moveOtherPlayer(movementData.x+16,movementData.y+16);
           //Opponent animations
+          //console.log("direction");
+          //console.log(movementData.direction);
           if(movementData.direction == "UP")
             if(this.player.playerNo == 1) {
               this.player2.anims.play('p2reverse',true);
@@ -232,9 +286,11 @@ export default new Phaser.Class({
               this.player2.anims.play('reverse',true);
             }
           else {
+
             if(this.player.playerNo == 1) {
               this.player2.anims.play('p2walk',true);
             } else {
+              console.log("Moving");
               this.player2.anims.play('walk',true);
             }
           }
@@ -308,8 +364,6 @@ export default new Phaser.Class({
       //Scene restart is triggered by server
       this.socket.on('restartLevel', () =>  {
         this.scene.restart();
-        //this.scene.stop();
-        //this.scene.start('Multiplayer');
       });
 
 
@@ -340,6 +394,7 @@ export default new Phaser.Class({
         this.player.setVisible(false);
         this.player2.setVisible(false);
         this.zombiegroup.setVisible(false);
+        this.icongroup.setVisible(false);
         this.messageTxt.setText(deathTxt).setOrigin(0.5);
         this.messageTxt.setPosition(400, 300);
         this.messageTxt.setVisible(true);
@@ -405,8 +460,6 @@ export default new Phaser.Class({
             this.registry.set('wins',wins);
             //Draw the player stats
             this.drawGameOverPanel(win,player.score,otherScore)
-            //Tell the server the game has finished
-
           },
           callbackScope: this,
           loop: false
@@ -419,8 +472,32 @@ export default new Phaser.Class({
         console.log(socket_ID);
         console.log(player);
         console.log(otherScore);
-
-        //Need to add player quit code below is opposite of game over code params
+        //Add death screen text
+        var coverScreen = new Phaser.Geom.Rectangle(0, 0, this.map.widthInPixels,this.map.heightInPixels );
+        this.blackRectangle.fillRectShape(coverScreen);
+        this.tweens.add({
+            targets: this.blackRectangle,
+            alpha: 1,
+        });
+        this.player.setVisible(false);
+        this.player2.setVisible(false);
+        this.zombiegroup.setVisible(false);
+        this.icongroup.setVisible(false);
+        this.messageTxt.setText("You Have Won \n Your Opponent Quit").setOrigin(0.5);
+        this.messageTxt.setPosition(400, 300);
+        this.messageTxt.setVisible(true);
+        this.respawnTimer = this.time.addEvent({
+          delay: 3000,
+          callback: function() {
+            var wins = this.registry.values.wins;
+            wins[this.level] = true;
+            this.registry.set('wins',wins);
+            //Draw the player stats
+            this.drawGameOverPanel(true,otherScore,player.score)
+          },
+          callbackScope: this,
+          loop: false
+        });
       });
 
 
@@ -454,9 +531,9 @@ export default new Phaser.Class({
               var player2Layer = sc.map.getObjectLayer('player2')['objects'];
               //sc.player = sc.physics.add.sprite(playerLayer[0].x+16, playerLayer[0].y-16, 'player',0);
               //TEST
-              //sc.player = sc.physics.add.sprite(560, 216, 'player',0);
+              sc.player = sc.physics.add.sprite(560, 216, 'player',0);
               //Near zombie
-              sc.player = sc.physics.add.sprite(752, 128, 'player',0);
+              //sc.player = sc.physics.add.sprite(752, 128, 'player',0);
 
               sc.player2 = sc.physics.add.sprite(player2Layer[0].x+16, player2Layer[0].y-16, 'player2',0);
             } else {
@@ -480,6 +557,7 @@ export default new Phaser.Class({
             sc.player.playerNo = me.playerNo;
             sc.player.otherId = me.otherPlayer;
             sc.player.pairId = me.pairId;
+            sc.player2.playerNo = otherPlayer.playerNo;
 
             //Send positions to server
 
@@ -581,57 +659,7 @@ export default new Phaser.Class({
       });
       */
 
-      // player animations
-      this.anims.create({
-          key: 'walk',
-          frames: this.anims.generateFrameNames('player', {prefix: 'man ',suffix: '.aseprite', start: 0, end: 11}),
-          frameRate: 10,
-          repeat: -1
-      });
-      this.anims.create({
-          key: 'reverse',
-          frames: this.anims.generateFrameNames('player', {prefix: 'man ',suffix: '.aseprite', start: 12, end: 23}),
-          frameRate: 10,
-          repeat: -1
-      });
-      this.anims.create({
-          key: 'idle',
-          frames: this.anims.generateFrameNames('player', {prefix: 'man ',suffix: '.aseprite', start: 11, end: 11}),
-          frameRate: 10,
-          repeat: -1
-      });
-      this.anims.create({
-          key: 'death',
-          frames: this.anims.generateFrameNames('player', {prefix: 'man ',suffix: '.aseprite', start: 48, end: 56}),
-          frameRate: 10,
-          repeat: 0
-      });
 
-      // player2 animations
-      this.anims.create({
-          key: 'p2walk',
-          frames: this.anims.generateFrameNames('player2', {prefix: 'player2 ',suffix: '.aseprite', start: 0, end: 11}),
-          frameRate: 10,
-          repeat: -1
-      });
-      this.anims.create({
-          key: 'p2reverse',
-          frames: this.anims.generateFrameNames('player2', {prefix: 'player2 ',suffix: '.aseprite', start: 12, end: 23}),
-          frameRate: 10,
-          repeat: -1
-      });
-      this.anims.create({
-          key: 'p2idle',
-          frames: this.anims.generateFrameNames('player2', {prefix: 'player2 ',suffix: '.aseprite', start: 11, end: 11}),
-          frameRate: 10,
-          repeat: -1
-      });
-      this.anims.create({
-          key: 'p2death',
-          frames: this.anims.generateFrameNames('player2', {prefix: 'player2 ',suffix: '.aseprite', start: 24, end: 32}),
-          frameRate: 10,
-          repeat: 0
-      });
 
       // set the boundaries of our game world
       this.physics.world.bounds.width = this.map.widthInPixels;
@@ -640,6 +668,7 @@ export default new Phaser.Class({
 
       // set background color, so the sky is not black
       //this.cameras.main.setBackgroundColor('#ccccff');
+      this.drawGameStartPanel();
   },
 
 
@@ -669,7 +698,7 @@ export default new Phaser.Class({
               if(this.player.playerNo == 1) {
                 this.player.anims.play('walk',true);
               } else {
-                //this.player.anims.play('p2walk',true);
+                this.player.anims.play('p2walk',true);
               }
               this.currentDirection = "DN";
               this.player.y+=2;
@@ -679,7 +708,7 @@ export default new Phaser.Class({
               if(this.player.playerNo == 1) {
                 this.player.anims.play('reverse',true);
               } else {
-                //this.player.anims.play('p2reverse',true);
+                this.player.anims.play('p2reverse',true);
               }
               this.currentDirection = "UP";
               this.player.y-=2;
@@ -689,7 +718,7 @@ export default new Phaser.Class({
               if(this.player.playerNo == 1) {
                 this.player.anims.play('walk',true);
               } else {
-                //this.player.anims.play('p2walk',true);
+                this.player.anims.play('p2walk',true);
               }
               this.currentDirection = "R";
               this.player.x+=2;
@@ -699,7 +728,7 @@ export default new Phaser.Class({
               if(this.player.playerNo == 1) {
                 this.player.anims.play('walk',true);
               } else {
-                //this.player.anims.play('p2walk',true);
+                this.player.anims.play('p2walk',true);
               }
               this.currentDirection = "L";
               this.player.x-=2;
@@ -719,7 +748,7 @@ export default new Phaser.Class({
             if(this.player.playerNo == 1) {
               this.player.anims.play('death',true);
             } else {
-              //this.player.anims.play('p2death',true);
+              this.player.anims.play('p2death',true);
             }
             this.registry.values.lives--;
             /*
@@ -730,9 +759,17 @@ export default new Phaser.Class({
         }
 
         if(this.player2.dead) {
-          this.player2.anims.play('p2death',true);
+          if(this.player.playerNo == 2) {
+            this.player2.anims.play('p2death',true);
+          } else {
+            this.player2.anims.play('death',true);
+          }
         } else {
-          this.player2.anims.play('p2walk',true);
+          if(this.player.playerNo == 2) {
+            this.player2.anims.play('idle',true);
+          } else {
+            this.player2.anims.play('p2idle',true);
+          }
         }
         //Get the active icon area and check for overlap
         if(!this.levelComplete) {
@@ -793,9 +830,11 @@ export default new Phaser.Class({
   },
 
   drawGameOverPanel: function(win,myScore,otherScore) {
-    var panel = this.add.graphics({ fillStyle: { color: 0x7488a8} }).setAlpha(1);
-    var panelShape = new Phaser.Geom.Rectangle(200, 100, 400,400 );
-    panel.fillRectShape(panelShape);
+    //var panel = this.add.graphics({ fillStyle: { color: 0x7488a8} }).setAlpha(1);
+    //var panelShape = new Phaser.Geom.Rectangle(200, 100, 400,400 );
+    //panel.fillRectShape(panelShape);
+    this.add.rexRoundRectangle(400, 300, 405, 405, 30, 0xc9d132);
+    this.add.rexRoundRectangle(400, 300, 400, 400, 30, 0x7488a8);
     this.add.text(400, 120, 'Game Over', {
         fontSize: '20px',
         fill: '#c9d132'
@@ -813,7 +852,7 @@ export default new Phaser.Class({
         fontSize: '20px',
         fill: '#c9d132'
     });
-    this.add.text(420, 180, 'Oponenet', {
+    this.add.text(420, 180, 'Opponent', {
         fontSize: '20px',
         fill: '#c9d132'
     });
@@ -859,6 +898,39 @@ export default new Phaser.Class({
         fill: '#ffffff'
     });
     this.socket.disconnect();
+  },
+
+  drawGameStartPanel: function() {
+    this.waitBox = [];
+    var rect1 = this.add.rexRoundRectangle(400, 300, 405, 405, 30, 0xc9d132);
+    var rect2 = this.add.rexRoundRectangle(400, 300, 400, 400, 30, 0x7488a8);
+    var title = this.add.text(400, 120, 'Multiplayer Game', {
+        fontSize: '20px',
+        fill: '#c9d132'
+    }).setOrigin(0.5);
+    var waitTxt = this.add.text(400, 150, 'Waiting for Opponent', {
+        fontSize: '20px',
+        fill: '#ffffff'
+    }).setOrigin(0.5);
+    var waitOn = true;
+    this.waitTimer = sc.time.addEvent({
+      delay: 100,
+      callback: function() {
+        if(waitOn) {
+          this.waitTxt.setVisible(false);
+          waitOn = false;
+        } else {
+          this.waitTxt.setVisible(true);
+          waitOn = true;
+        }
+      },
+      callbackScope: this,
+      loop: true
+    });
+    this.waitBox.push(rect1);
+    this.waitBox.push(rect2);
+    this.waitBox.push(title);
+    this.waitBox.push(waitTxt);
   }
 
 });
