@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import Level1 from "./level1.js";
+import Title from "./title.js";
 import Multiplayer from "./multiplayer.js";
 import WebfontLoaderPlugin from 'phaser3-rex-plugins/plugins/webfontloader-plugin.js';
 import RoundRectanglePlugin from 'phaser3-rex-plugins/plugins/roundrectangle-plugin.js';
@@ -28,7 +29,7 @@ var config = {
         start: true
       },]
     },
-    scene: [Multiplayer]
+    scene: [Title,Level1,Multiplayer]
 }
 
 var game = new Phaser.Game(config);

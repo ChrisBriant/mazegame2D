@@ -5,7 +5,7 @@ export default new Phaser.Class({
     Extends: Phaser.Scene,
     initialize:
     function Level1() {
-        Phaser.Scene.call(this, { key: 'Level1' , active: true  })
+        Phaser.Scene.call(this, { key: 'Level1' , active: false  })
     },
 
     preload: function () {

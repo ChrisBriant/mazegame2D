@@ -63,6 +63,7 @@ export default new Phaser.Class({
      this.invincible = true;
      this.currentDirection = "ST";
      this.scoring = false;
+     this.waitBox = [];
 
      this.paired = false;
      //var paired = this.paired;
@@ -503,7 +504,15 @@ export default new Phaser.Class({
 
       this.socket.on('pair', function (pair) {
         console.log("I have received a pair");
-        console.log(pair);
+        console.log(sc.waitBox);
+        //Destroy waiting items if the exist
+        for(var i=0;i<sc.waitBox.length;i++){
+          sc.waitBox[i].destroy();
+        }
+        sc.waitBox.forEach(i => function() {
+          console.log(i);
+          i.destroy();
+        });
 
         //For server
         var zombieData = {'playerId':socket_ID,'zombies':[],'pairId':pair[0].pairId,'map':zombieMoveMap};
@@ -901,26 +910,28 @@ export default new Phaser.Class({
   },
 
   drawGameStartPanel: function() {
-    this.waitBox = [];
-    var rect1 = this.add.rexRoundRectangle(400, 300, 405, 405, 30, 0xc9d132);
-    var rect2 = this.add.rexRoundRectangle(400, 300, 400, 400, 30, 0x7488a8);
-    var title = this.add.text(400, 120, 'Multiplayer Game', {
+    var coverScreen = new Phaser.Geom.Rectangle(0, 0, this.map.widthInPixels,this.map.heightInPixels );
+    var blackRectangle = this.add.graphics({ fillStyle: { color: 0x000000} }).setAlpha(0.5);
+    blackRectangle.fillRectShape(coverScreen);
+    var rect1 = this.add.rexRoundRectangle(400, 300, 305, 205, 30, 0xc9d132);
+    var rect2 = this.add.rexRoundRectangle(400, 300, 300, 200, 30, 0x7488a8);
+    var title = this.add.text(400, 270, 'Multiplayer Game', {
         fontSize: '20px',
         fill: '#c9d132'
     }).setOrigin(0.5);
-    var waitTxt = this.add.text(400, 150, 'Waiting for Opponent', {
+    var waitTxt = this.add.text(400, 300, 'Waiting for Opponent', {
         fontSize: '20px',
         fill: '#ffffff'
     }).setOrigin(0.5);
     var waitOn = true;
-    this.waitTimer = sc.time.addEvent({
-      delay: 100,
+    this.waitTimer = this.time.addEvent({
+      delay: 500,
       callback: function() {
         if(waitOn) {
-          this.waitTxt.setVisible(false);
+          waitTxt.setVisible(false);
           waitOn = false;
         } else {
-          this.waitTxt.setVisible(true);
+          waitTxt.setVisible(true);
           waitOn = true;
         }
       },
@@ -931,6 +942,9 @@ export default new Phaser.Class({
     this.waitBox.push(rect2);
     this.waitBox.push(title);
     this.waitBox.push(waitTxt);
+    this.waitBox.push(blackRectangle);
+    console.log("Wait box below");
+    console.log(this.waitBox);
   }
 
 });
