@@ -9,6 +9,11 @@ export default new Phaser.Class({
     },
 
     preload: function () {
+      this.load.rexWebFont({
+        google: {
+            families: ['Bangers','Gloria Hallelujah','Oswald','Londrina Solid']
+          }
+        });
         // map made with Tiled in JSON format
         this.load.tilemapTiledJSON('map1', 'assets/level1.json');
         this.load.tilemapTiledJSON('map2', 'assets/level2.json');
@@ -226,6 +231,7 @@ export default new Phaser.Class({
       //this.screenCenterY = this.cameras.main.worldView.y + this.cameras.main.height / 2;
 
       this.messageTxt = this.add.text(0,0, '', {
+          fontFamily: 'Londrina Solid',
           fontSize: '20px',
           fill: '#ffffff',
           align: "center"
@@ -405,10 +411,7 @@ export default new Phaser.Class({
           callback: function() {
             this.player.dead = false;
             this.playingDeathSeq = false;
-            //this.fadeToBlack.destroy();
-            //this.removeTween(this.fadeToBlack);
             this.blackRectangle.clear();
-            console.log(this.tweens);
           },
           callbackScope: this,
           loop: false
@@ -419,6 +422,14 @@ export default new Phaser.Class({
         this.messageTxt.setText(this.gameMessage).setOrigin(0.5);
         this.messageTxt.setPosition(400, 300);
         this.messageTxt.setVisible(true);
+        this.respawnTimer = this.time.addEvent({
+          delay: 3000,
+          callback: function() {
+            this.scene.start("Title");
+          },
+          callbackScope: this,
+          loop: false
+        });
       }
 
     }
