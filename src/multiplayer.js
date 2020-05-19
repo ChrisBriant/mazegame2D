@@ -75,6 +75,11 @@ export default new Phaser.Class({
      //var map = this.map;
      //var sceneCameras = this.cameras;
      var sc = this;
+     //Key press escape go back to title
+     this.input.keyboard.on('keydown_ESC', function (event) {
+       sc.socket.disconnect();
+       sc.scene.start('Title');
+     });
 
      // player animations
      this.anims.create({
@@ -249,23 +254,8 @@ export default new Phaser.Class({
         if(player.playerNo == 2) {
           this.emit('player2Ready', { player });
         }
-        /*
-        Object.keys(players).forEach(function (id) {
-          console.log(players[id].playerId);
-          console.log(socket_ID);
-          if (players[id].playerId === socket_ID) {
-            if(players[id].player)
-          }
-        });*/
+
       });
-
-      //Capture the other player's movement
-      /*
-      this.socket.on('opponentmove', function (movementData) {
-        sc.player2.body.x = movementData.x;
-        sc.player2.body.y = movementData.y;
-      });*/
-
 
 
       this.socket.on('opponentmove', (movementData,zombies,icons,scores,lives) =>  {
@@ -504,16 +494,10 @@ export default new Phaser.Class({
 
       this.socket.on('pair', function (pair) {
         console.log("I have received a pair");
-        console.log(sc.waitBox);
         //Destroy waiting items if the exist
         for(var i=0;i<sc.waitBox.length;i++){
           sc.waitBox[i].destroy();
         }
-        sc.waitBox.forEach(i => function() {
-          console.log(i);
-          i.destroy();
-        });
-
         //For server
         var zombieData = {'playerId':socket_ID,'zombies':[],'pairId':pair[0].pairId,'map':zombieMoveMap};
         //Send the tilemaps to the server
@@ -943,8 +927,6 @@ export default new Phaser.Class({
     this.waitBox.push(title);
     this.waitBox.push(waitTxt);
     this.waitBox.push(blackRectangle);
-    console.log("Wait box below");
-    console.log(this.waitBox);
   }
 
 });

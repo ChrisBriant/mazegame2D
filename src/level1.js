@@ -36,6 +36,12 @@ export default new Phaser.Class({
       this.levelComplete = false;
       this.playingDeathSeq = false;
 
+      var sc = this;
+      //Key press escape go back to title
+      this.input.keyboard.on('keydown_ESC', function (event) {
+        sc.scene.start('Title');
+      });
+
       // load the map
       this.map = this.make.tilemap({key: 'map' + this.level});
 
