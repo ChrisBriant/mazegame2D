@@ -242,7 +242,16 @@ io.on('connection', function (socket) {
   });
 
   //Here I need to capture the request to move a zombie
-  socket.on()
+  socket.on('movezombie', function() {
+    console.log(zombieData);
+    for(var i=0;i<zombieData.length;i++) {
+      var zombies = zombieData[i].zombies
+      for(var j=0;j<zombies.length;j++) {
+        var tiles = getAdjacentTiles(zombies[j].x,zombies[j].y,zombieData[i].map);
+        moveZombie(tiles,zombies[j]);
+      }
+    }
+  });
 
 });
 
@@ -293,6 +302,7 @@ function moveZombie(tiles,zombie) {
     }
 }
 
+/*
 setInterval(function() {
     //console.log(zombieData);
     for(var i=0;i<zombieData.length;i++) {
@@ -302,4 +312,4 @@ setInterval(function() {
         moveZombie(tiles,zombies[j]);
       }
     }
-}, 500);
+}, 500);*/

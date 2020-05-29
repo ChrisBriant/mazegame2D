@@ -60,7 +60,7 @@ export default new Phaser.Class({
      this.gameMessage = "";
      this.levelComplete = false;
      this.playingDeathSeq = false;
-     this.invincible = true;
+     this.invincible = false;
      this.currentDirection = "ST";
      this.scoring = false;
      this.waitBox = [];
@@ -302,6 +302,9 @@ export default new Phaser.Class({
                   zombie.moved = false;
                 },
             });
+            if(this.player.playerNo == 1) {
+              this.socket.emit('movezombie');
+            }
           }
           //zombie.setPosition(zombies[i].x,zombies[i].y);
         }
