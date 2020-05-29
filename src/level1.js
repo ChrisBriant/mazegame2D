@@ -40,6 +40,7 @@ export default new Phaser.Class({
       this.gameMessage = "";
       this.levelComplete = false;
       this.playingDeathSeq = false;
+      this.running = true;
 
       var sc = this;
       //Key press escape go back to title
@@ -154,6 +155,7 @@ export default new Phaser.Class({
         var zombiesprite = this.zombiegroup.create(zombie.x+16, zombie.y-16, 'player');
         zombiesprite.body.setAllowGravity(false);
         zombiesprite.visitedTiles = [];
+        zombiesprite.moved = false;
       });
 
       //Zombie animations
@@ -242,6 +244,7 @@ export default new Phaser.Class({
 
 
   update: function(time, delta) {
+    if(this.running) {
       //Update the display with the new velocity
       //this.speed.setText(this.player.body.velocity.x);
 
@@ -336,6 +339,7 @@ export default new Phaser.Class({
                 this.registry.set('score',this.score);
                 this.registry.set('level',this.level+1);
                 //this.load.start();
+                this.running = false;
                 this.scene.restart();
               },
               callbackScope: this,
@@ -347,29 +351,37 @@ export default new Phaser.Class({
 
       //this.graphics.clear();
       //this.graphics.fillRectShape(iconarea);
+    }
   },
 
   moveZombie: function (zombie) {
-    var adjacentTiles = [];
-    adjacentTiles[0] = this.shelves.getTileAtWorldXY(zombie.x,zombie.y+32,true);
-    adjacentTiles[1] = this.shelves.getTileAtWorldXY(zombie.x,zombie.y-32,true);
-    adjacentTiles[2] = this.shelves.getTileAtWorldXY(zombie.x+32,zombie.y,true);
-    adjacentTiles[3] = this.shelves.getTileAtWorldXY(zombie.x-32,zombie.y,true);
-    //Filter the tiles which are not blocked
-    var spaces = adjacentTiles.filter(tile => tile.index == -1);
-    spaces = spaces.filter(t => !zombie.visitedTiles.includes(t) );
-    if(spaces.length > 0){
-      var nextMoveIdx = randomNumber(0,spaces.length);
-      zombie.visitedTiles.push(spaces[nextMoveIdx]);
-      zombie.x = spaces[nextMoveIdx].pixelX + 16
-      zombie.y = spaces[nextMoveIdx].pixelY + 16
-    } else {
-      //clear the visted path
-      zombie.visitedTiles = [];
+    console.log(zombie.moved);
+    if(!zombie.moved) {
+      zombie.moved = true;
+      var adjacentTiles = [];
+      adjacentTiles[0] = this.shelves.getTileAtWorldXY(zombie.x,zombie.y+32,true);
+      adjacentTiles[1] = this.shelves.getTileAtWorldXY(zombie.x,zombie.y-32,true);
+      adjacentTiles[2] = this.shelves.getTileAtWorldXY(zombie.x+32,zombie.y,true);
+      adjacentTiles[3] = this.shelves.getTileAtWorldXY(zombie.x-32,zombie.y,true);
+      //Filter the tiles which are not blocked
+      var spaces = adjacentTiles.filter(tile => tile.index == -1);
+      spaces = spaces.filter(t => !zombie.visitedTiles.includes(t) );
+      if(spaces.length > 0){
+        var nextMoveIdx = randomNumber(0,spaces.length);
+        zombie.visitedTiles.push(spaces[nextMoveIdx]);
+        this.tweens.add({
+            targets: zombie,
+            x: spaces[nextMoveIdx].pixelX + 16,
+            y: spaces[nextMoveIdx].pixelY + 16,
+            onComplete: function() {
+              zombie.moved = false;
+            },
+        });
+      } else {
+        zombie.visitedTiles = [];
+        zombie.moved = false;
+      }
     }
-    //console.log(adjacentTiles);
-    //this.scene.pause();
-
   },
 
   playerCollides: function (x,y) {

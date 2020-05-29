@@ -29,7 +29,8 @@ var config = {
         start: true
       },]
     },
-    scene: [Title,Level1,Multiplayer]
+    //scene: [Title,Level1,Multiplayer]
+    scene: [Multiplayer]
 }
 
 var game = new Phaser.Game(config);

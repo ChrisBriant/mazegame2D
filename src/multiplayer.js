@@ -64,6 +64,7 @@ export default new Phaser.Class({
      this.currentDirection = "ST";
      this.scoring = false;
      this.waitBox = [];
+     this.running = true;
 
      this.paired = false;
      //var paired = this.paired;
@@ -290,7 +291,19 @@ export default new Phaser.Class({
         //Move zombies
         for(var i=0;i<zombies.length;i++) {
           var zombie = this.zombiegroup.children.entries.filter(zomb => zomb.trackingId == zombies[i].id)[0];
-          zombie.setPosition(zombies[i].x,zombies[i].y);
+          if(!zombie.moved) {
+            zombie.moved = true;
+            this.tweens.add({
+                targets: zombie,
+                x: zombies[i].x,
+                y: zombies[i].y,
+                onComplete: function() {
+                  console.log(zombie);
+                  zombie.moved = false;
+                },
+            });
+          }
+          //zombie.setPosition(zombies[i].x,zombies[i].y);
         }
         //Deal with icons
         if(icons.length > 0) {
@@ -354,6 +367,7 @@ export default new Phaser.Class({
 
       //Scene restart is triggered by server
       this.socket.on('restartLevel', () =>  {
+        this.running = false;
         this.scene.restart();
       });
 
@@ -568,6 +582,7 @@ export default new Phaser.Class({
           zombiesprite.body.setAllowGravity(false);
           zombiesprite.visitedTiles = [];
           zombiesprite.trackingId = zombieIdx;
+          zombiesprite.moved = false;
           zombieData.zombies.push({'id':zombieIdx,'x':zombiesprite.x,'y':zombiesprite.y,'visited':[]});
           zombieIdx++;
         });
@@ -591,11 +606,6 @@ export default new Phaser.Class({
         if(me.playerNo == 1) {
           this.emit("zombiestart",zombieData,me.pairId);
         }
-        /*
-        sc.socket.on('zombieRequestTiles', z => {
-          alert("Here");
-          this.sendTilesToServer(z);
-        });*/
         //Set up timer to send player movement
         sc.moveTimer = sc.time.addEvent({
           delay: 100,
@@ -642,18 +652,6 @@ export default new Phaser.Class({
         sc.player2.anims.play('p2walk');
       });
 
-      //this.socket.on('otherplayer', function (other) {
-      //});
-
-
-      /*
-      this.socket.on('zombieRequestTiles', z => {
-        this.sendTilesToServer(z);
-      });
-      */
-
-
-
       // set the boundaries of our game world
       this.physics.world.bounds.width = this.map.widthInPixels;
       this.physics.world.bounds.height = this.map.heightInPixels;
@@ -666,6 +664,7 @@ export default new Phaser.Class({
 
 
   update: function(time, delta) {
+    if(this.running) {
       //Update the display with the new velocity
 
       //Make text "float" upwards
@@ -780,6 +779,7 @@ export default new Phaser.Class({
         }
 
       }
+    }
   },
 
   moveOtherPlayer: function (x,y) {
