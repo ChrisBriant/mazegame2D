@@ -23,10 +23,16 @@ export default new Phaser.Class({
       this.load.image('rice', 'assets/icons/rice.png');
       this.load.image('pop', 'assets/icons/pop.png');
       this.load.image('bread', 'assets/icons/bread.png');
+      //Music
+      this.load.audio('title', 'assets/music/Six_Umbrellas_-_01_-_Runner.mp3');
     },
 
     create: function ()
     {
+      //Create Audio
+      this.titlemusic = this.sound.add('title');
+      this.titlemusic.play();
+
       this.cursors = this.input.keyboard.createCursorKeys();
       this.singlePlayerSelected = true;
       this.iconOrder = {
@@ -66,7 +72,7 @@ export default new Phaser.Class({
       //Reset all of the registry values
       this.registry.set('score',0);
       this.registry.set('level',1);
-      this.registry.set('lives',0);
+      this.registry.set('lives',3);
       this.registry.set('wins',{1:false,2:false,3:false,4:false,5:false})
     },
 
@@ -80,6 +86,7 @@ export default new Phaser.Class({
       }
 
       if(this.cursors.space.isDown) {
+        this.titlemusic.stop();
         if(this.singlePlayerSelected) {
           this.scene.start('Level1');
         } else {

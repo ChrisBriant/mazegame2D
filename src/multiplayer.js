@@ -1,6 +1,5 @@
 import Phaser from "phaser";
 import {randomNumber} from './include.js';
-//import 'socket.io-client' from '/socket.io/socket.io.js';
 import io from 'socket.io-client';
 
 export default new Phaser.Class({
@@ -12,12 +11,13 @@ export default new Phaser.Class({
 
     preload: function () {
         // map made with Tiled in JSON format
-        this.load.tilemapTiledJSON('map1', 'assets/level1.json');
-        this.load.tilemapTiledJSON('map2', 'assets/level2.json');
-        this.load.tilemapTiledJSON('map3', 'assets/level3.json');
+        this.load.tilemapTiledJSON('mmap1', 'assets/level1.json');
+        this.load.tilemapTiledJSON('mmap2', 'assets/level2.json');
+        this.load.tilemapTiledJSON('mmap3', 'assets/level3.json');
+        this.load.tilemapTiledJSON('mmap4', 'assets/level4m.json');
+        this.load.tilemapTiledJSON('mmap5', 'assets/level5m.json');
         // tiles in spritesheet
         this.load.spritesheet('tilemap', 'assets/tilemap.png', {frameWidth: 32, frameHeight: 32});
-        //this.load.spritesheet('icons', 'assets/icons.png', {frameWidth: 32, frameHeight: 32});
         // player animations
         this.load.atlas('player', 'assets/player.png', 'assets/player.json');
         this.load.atlas('player2', 'assets/player2.png', 'assets/player2.json');
@@ -28,18 +28,14 @@ export default new Phaser.Class({
         this.load.image('rice', 'assets/icons/rice.png');
         this.load.image('pop', 'assets/icons/pop.png');
         this.load.image('bread', 'assets/icons/bread.png');
+        //audio
+        this.load.audio('bgmusic', 'assets/music/Lobo_Loco_-_02_-_Brain_-_Instrumental_Retro_ID_1271.mp3');
+        this.load.audio('scoresound', 'assets/music/zapsplat_multimedia_game_tome_musical_synth_level_complete_etc_003_38429.mp3');
     },
 
    create: function() {
-
-     //this.playerNo = 0;
-     console.log(this.socket);
-     //this.scene.pause();
-     //var socketId = this.socket['id'];
-     //console.log(this.socket._callbacks);
      this.level = this.registry.values.level;
      if(this.level > 1) {
-       console.log("Scene Restart");
        var socket_ID = this.registry.values.socket_ID;
        //Tell server nextlevel is ready
        this.socket = this.registry.values.socket;
@@ -47,16 +43,15 @@ export default new Phaser.Class({
        this.socket.emit('newLevel',socket_ID,this.registry.values.pairId);
      } else {
        this.socket = io();
-       this.socket = io.connect('http://localhost:8081');
+       this.socket = io.connect('https://coronamaze-multiplayer-server.herokuapp.com/');
        var socket_ID;
      }
 
      var playerNo = 0;
+     //Create Audio
+     var bgmusic = this.sound.add('bgmusic');
+     bgmusic.play();
 
-
-     //this.socket.emit('playerMovement', { x: 28, y: 92, rotation: 44 });
-
-     //this.score = this.registry.values.score;
      this.gameMessage = "";
      this.levelComplete = false;
      this.playingDeathSeq = false;
@@ -70,11 +65,6 @@ export default new Phaser.Class({
      //var paired = this.paired;
      this.player;
      this.player2;
-     //var player = this.player;
-     //var player2 = this.player2;
-     //var scenePhysics = this.physics;
-     //var map = this.map;
-     //var sceneCameras = this.cameras;
      var sc = this;
      //Key press escape go back to title
      this.input.keyboard.on('keydown_ESC', function (event) {
@@ -135,10 +125,8 @@ export default new Phaser.Class({
      });
 
      // load the map
-     this.map = this.make.tilemap({key: 'map' + this.level});
+     this.map = this.make.tilemap({key: 'mmap' + this.level});
      var levelTiles = this.map.addTilesetImage('tilemap');
-
-
 
      this.cameras.main.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
 
@@ -146,8 +134,6 @@ export default new Phaser.Class({
      this.floor = this.map.createDynamicLayer('floor', levelTiles, 0, 0);
      // create the shelves layer
      this.shelves = this.map.createDynamicLayer('walls', levelTiles, 0, 0);
-     console.log("shelves");
-     console.log(this.shelves);
      // the player will collide with this layer
      this.shelves.setCollisionByExclusion([-1]);
 
@@ -166,7 +152,6 @@ export default new Phaser.Class({
        zombieMoveMap.push(col);
        tileMapX += 32;
      }
-     console.log(zombieMoveMap);
 
      this.blackRectangle = this.add.graphics({ fillStyle: { color: 0x000000} }).setAlpha(0);
 
@@ -177,8 +162,6 @@ export default new Phaser.Class({
      });
      this.points.setScrollFactor(0);
      this.points.setVisible(false);
-
-
 
      //Used for debugging only
      this.graphics = this.add.graphics({ fillStyle: { color: 0x0000ff } });
@@ -214,10 +197,6 @@ export default new Phaser.Class({
      });
      this.p2LivesTxt.setScrollFactor(0);
 
-     //Centre of screen
-     //this.screenCenterX = this.cameras.main.worldView.x + this.cameras.main.width / 2;
-     //this.screenCenterY = this.cameras.main.worldView.y + this.cameras.main.height / 2;
-
      this.messageTxt = this.add.text(0,0, '', {
          fontSize: '20px',
          fill: '#ffffff',
@@ -227,31 +206,12 @@ export default new Phaser.Class({
      this.messageTxt.setVisible(false);
 
      this.socket.on('socketID', function (socketID) {
-       console.log(socketID);
        socket_ID= socketID;
      });
 
      this.socket.on('currentPlayers', function (players) {
        //When players is an array
-       /*
-       for(var i=0;i<players.length;i++) {
-         var player = players[i].filter(p => p.playerId === socket_ID);
-         if(playerNo == 0) {
-           //console.log("Here");
-           if(player.length > 0) {
-             console.log("Found Player");
-             console.log(player);
-             if(players[i].length > 1) {
-               playerNo = player[0].playerNo;
-               alert("I am player " + playerNo);
-             }
-           }
-         }
-       }*/
-        //lert(socket_ID);
         var player = players.filter(p => p.playerId === socket_ID)[0];
-        console.log("Player");
-        console.log(player);
         if(player.playerNo == 2) {
           this.emit('player2Ready', { player });
         }
@@ -269,8 +229,6 @@ export default new Phaser.Class({
         if(movementData.otherId == socket_ID) {
           this.moveOtherPlayer(movementData.x+16,movementData.y+16);
           //Opponent animations
-          //console.log("direction");
-          //console.log(movementData.direction);
           if(movementData.direction == "UP")
             if(this.player.playerNo == 1) {
               this.player2.anims.play('p2reverse',true);
@@ -282,7 +240,6 @@ export default new Phaser.Class({
             if(this.player.playerNo == 1) {
               this.player2.anims.play('p2walk',true);
             } else {
-              console.log("Moving");
               this.player2.anims.play('walk',true);
             }
           }
@@ -298,7 +255,6 @@ export default new Phaser.Class({
                 x: zombies[i].x,
                 y: zombies[i].y,
                 onComplete: function() {
-                  console.log(zombie);
                   zombie.moved = false;
                 },
             });
@@ -306,7 +262,6 @@ export default new Phaser.Class({
               this.socket.emit('movezombie');
             }
           }
-          //zombie.setPosition(zombies[i].x,zombies[i].y);
         }
         //Deal with icons
         if(icons.length > 0) {
@@ -321,7 +276,6 @@ export default new Phaser.Class({
              this.activeSprite.setActive(true);
            } else {
              if(!this.levelComplete) {
-               //this.paired = false;
                this.levelComplete = true;
                var win;
                //Fade out screen
@@ -341,7 +295,11 @@ export default new Phaser.Class({
                  var completeTxt = "You Lose";
                  win = false;
                }
-               this.messageTxt.setText("Level " + this.level + " Complete!\n" + completeTxt).setOrigin(0.5);
+               if(this.level + 1 > 5) {
+                 this.messageTxt.setText("Game Complete!").setOrigin(0.5);
+               } else {
+                 this.messageTxt.setText("Level " + this.level + " Complete!\n" + completeTxt).setOrigin(0.5);
+               }
                this.messageTxt.setPosition(400, 300);
                this.messageTxt.setVisible(true);
                this.levelCompleteTimer = this.time.addEvent({
@@ -352,7 +310,6 @@ export default new Phaser.Class({
                    this.registry.values.socket_ID = socket_ID;
                    this.registry.values.socket = this.socket;
                    this.registry.values.pairId = this.player.pairId;
-                   //this.gameMessage = "Level " + this.level + " Complete";
                    var wins = this.registry.values.wins;
                    wins[this.level] = win;
                    this.registry.set('wins',wins);
@@ -371,7 +328,11 @@ export default new Phaser.Class({
       //Scene restart is triggered by server
       this.socket.on('restartLevel', () =>  {
         this.running = false;
-        this.scene.restart();
+        if(this.level + 1 > 5) {
+          this.scene.start('Title');
+        } else {
+          this.scene.restart();
+        }
       });
 
 
@@ -379,10 +340,6 @@ export default new Phaser.Class({
         //Handle player death
         this.invincible = true;
         var deathTxt = "";
-        console.log("Player Died");
-        console.log(player);
-        console.log(typeof this.player.playerId);
-        //this.scene.pause();
 
         if(player.playerId == this.player.playerId) {
           this.player.dead = true;
@@ -431,10 +388,6 @@ export default new Phaser.Class({
         this.invincible = true;
         var deathTxt = "";
         var win;
-        console.log("No Lives Lost");
-        console.log(player);
-        console.log(typeof this.player.playerId);
-        //this.scene.pause();
 
         if(player.playerId == this.player.playerId) {
           win = false;
@@ -476,10 +429,6 @@ export default new Phaser.Class({
 
 
       this.socket.on('otherPlayerDisconnected', (player,otherScore) => {
-        console.log("Disconnect");
-        console.log(socket_ID);
-        console.log(player);
-        console.log(otherScore);
         //Add death screen text
         var coverScreen = new Phaser.Geom.Rectangle(0, 0, this.map.widthInPixels,this.map.heightInPixels );
         this.blackRectangle.fillRectShape(coverScreen);
@@ -510,7 +459,6 @@ export default new Phaser.Class({
 
 
       this.socket.on('pair', function (pair) {
-        console.log("I have received a pair");
         //Destroy waiting items if the exist
         for(var i=0;i<sc.waitBox.length;i++){
           sc.waitBox[i].destroy();
@@ -520,7 +468,6 @@ export default new Phaser.Class({
         //Send the tilemaps to the server
         if(!sc.paired) {
             sc.paired = true;
-            //alert(JSON.stringify(pair));
             // set bounds so the camera won't go outside the game world
             if(pair[0].playerId == socket_ID) {
               var me = pair[0];
@@ -530,24 +477,17 @@ export default new Phaser.Class({
               var otherPlayer = pair[0];
             }
 
-            console.log("players ready");
-            console.log(me);
-            console.log(otherPlayer);
 
             if(me.playerNo == 1) {
-              //alert("I am 1");
               // create the player sprite
               var playerLayer = sc.map.getObjectLayer('player')['objects'];
               var player2Layer = sc.map.getObjectLayer('player2')['objects'];
-              //sc.player = sc.physics.add.sprite(playerLayer[0].x+16, playerLayer[0].y-16, 'player',0);
               //TEST
-              sc.player = sc.physics.add.sprite(560, 216, 'player',0);
+              //sc.player = sc.physics.add.sprite(560, 216, 'player',0);
               //Near zombie
-              //sc.player = sc.physics.add.sprite(752, 128, 'player',0);
-
+              sc.player = sc.physics.add.sprite(playerLayer[0].x+16, playerLayer[0].y-16, 'player',0);
               sc.player2 = sc.physics.add.sprite(player2Layer[0].x+16, player2Layer[0].y-16, 'player2',0);
             } else {
-              //alert("I am 2");
               var playerLayer = sc.map.getObjectLayer('player2')['objects'];
               var player2Layer = sc.map.getObjectLayer('player')['objects'];
               sc.player = sc.physics.add.sprite(playerLayer[0].x+16, playerLayer[0].y-16, 'player2',0);
@@ -568,17 +508,11 @@ export default new Phaser.Class({
             sc.player.otherId = me.otherPlayer;
             sc.player.pairId = me.pairId;
             sc.player2.playerNo = otherPlayer.playerNo;
-
-            //Send positions to server
-
-            //this.emit('zombiestart',zombieData);
         }
         var zombies = sc.map.getObjectLayer('zombie')['objects'];
         sc.zombiegroup = sc.physics.add.group();
 
-
         var zombieIdx = 0;
-        //zombieData.push();
 
         zombies.forEach(zombie => {
           var zombiesprite = sc.zombiegroup.create(zombie.x+16, zombie.y-16, 'player');
@@ -604,8 +538,6 @@ export default new Phaser.Class({
         });
 
         sc.zombiegroup.playAnimation('zwalk');
-        console.log("Me Again");
-        console.log(me);
         if(me.playerNo == 1) {
           this.emit("zombiestart",zombieData,me.pairId);
         }
@@ -614,7 +546,6 @@ export default new Phaser.Class({
           delay: 100,
           callback: function() {
             this.emit('movement', {'x':sc.player.x,'y':sc.player.y,'id':sc.player.playerId,'otherId':sc.player.otherId,'pairId':sc.player.pairId,'direction':sc.currentDirection});
-            //this.emit('movement', {'x':this.player.x,'y':this.player.y,'id':this.player.playerId,'otherId':this.player.otherId,'pairId':this.player.pairId});
           },
           callbackScope: this,
           loop: true
@@ -645,7 +576,7 @@ export default new Phaser.Class({
           iconsprite.collectOrder = sc.iconOrder[icon.name].order;
           iconsprite.points = sc.iconOrder[icon.name].points;
           iconsprite.iconName = icon.name
-          if (sc.iconOrder[icon.name].order != 6) {
+          if (sc.iconOrder[icon.name].order != 1) {
             iconsprite.setVisible(false);
             iconsprite.setActive(false);
           } else {
@@ -661,7 +592,6 @@ export default new Phaser.Class({
       this.cursors = this.input.keyboard.createCursorKeys();
 
       // set background color, so the sky is not black
-      //this.cameras.main.setBackgroundColor('#ccccff');
       this.drawGameStartPanel();
   },
 
@@ -669,7 +599,6 @@ export default new Phaser.Class({
   update: function(time, delta) {
     if(this.running) {
       //Update the display with the new velocity
-
       //Make text "float" upwards
       if(this.points.y != 0) {
         this.points.y -= 4;
@@ -746,10 +675,6 @@ export default new Phaser.Class({
               this.player.anims.play('p2death',true);
             }
             this.registry.values.lives--;
-            /*
-            if (this.registry.values.lives != -1) {
-              this.livesTxt.setText('Lives: ' +  this.registry.values.lives);
-            }*/
           }
         }
 
@@ -770,7 +695,8 @@ export default new Phaser.Class({
         if(!this.levelComplete) {
           var iconarea = new Phaser.Geom.Rectangle(this.activeSprite.x-16,this.activeSprite.y-16, 32, 32);
           if (iconarea.contains(this.player.x,this.player.y)) {
-            //if(this.activeSprite.collectOrder != 6) {
+              var scoresound = this.sound.add('scoresound');
+              scoresound.play();
               this.points.setText(this.activeSprite.points);
               this.points.setPosition(this.activeSprite.x, this.activeSprite.y-16);
               this.points.setVisible(true);
@@ -786,30 +712,19 @@ export default new Phaser.Class({
   },
 
   moveOtherPlayer: function (x,y) {
-    //console.log(x)
-    //console.log(this.player.body.x);
     this.player2.x = x-16;
     this.player2.y = y-16;
-    //this.player2.body.x = 300;
-    //this.player2.body.y = 200;
   },
 
   playerCollides: function (x,y) {
     var rect = new Phaser.Geom.Rectangle(x, y, 24, 24);
     var tiles = this.shelves.getTilesWithinShape(rect);
     var collidingTiles = tiles.filter(t => t.index != -1);
-    //this.graphics.clear();
-    //this.graphics.fillRectShape(rect);
     if(collidingTiles.length > 0) {
       return true;
     } else {
       return false;
     }
-  },
-
-  sendMovementData: function(player) {
-    console.log(player);
-
   },
 
   zombieEatPlayer: function(zombie) {
@@ -826,9 +741,6 @@ export default new Phaser.Class({
   },
 
   drawGameOverPanel: function(win,myScore,otherScore) {
-    //var panel = this.add.graphics({ fillStyle: { color: 0x7488a8} }).setAlpha(1);
-    //var panelShape = new Phaser.Geom.Rectangle(200, 100, 400,400 );
-    //panel.fillRectShape(panelShape);
     this.add.rexRoundRectangle(400, 300, 405, 405, 30, 0xc9d132);
     this.add.rexRoundRectangle(400, 300, 400, 400, 30, 0x7488a8);
     this.add.text(400, 120, 'Game Over', {

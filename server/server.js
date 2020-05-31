@@ -6,60 +6,31 @@ var cors = require('cors');
 
 var players_OLD = {};
 var players = [];
-/*
-var star = {
-  x: Math.floor(Math.random() * 700) + 50,
-  y: Math.floor(Math.random() * 500) + 50
-};
-var scores = {
-  blue: 0,
-  red: 0
-};*/
 var zombieData = [];
 var pairId = 0;
 var pairs = [];
 var iconGroups = [];
 var restartCount = 0;
-
+var port = process.env.PORT || 443;
 
 app.use(express.static(__dirname + '/public'));
 app.use(cors());
 
-/*
-app.get('/', function (req, res) {
-  res.sendFile(__dirname + '/index.html');
-});*/
+
+app.get('/', (req, res) => {
+  res.send('<h1>I am running</h1>');
+});
+
 
 // Function to generate random number
 function randomNumber(min, max) {
     return Math.floor(Math.random() * (max - min) + min);
 }
 
-
 io.on('connection', function (socket) {
-  console.log('a user connected: ', socket.id);
   //send the id
   socket.emit('socketID',socket.id);
   // create a new player and add it to our players object
-  /*
-  players[socket.id] = {
-    rotation: 0,
-    x: Math.floor(Math.random() * 700) + 50,
-    y: Math.floor(Math.random() * 500) + 50,
-    playerId: socket.id,
-    team: (Math.floor(Math.random() * 2) == 0) ? 'red' : 'blue'
-  };*/
-  //Tried as array of players
-  /*
-  if(players.length == 0) {
-  	players.push([{playerId:socket.id, playerNo:1}]);
-  } else {
-  	if(players[players.length-1].length < 2) {
-  		players[players.length-1].push({playerId:socket.id, playerNo:2});
-  	} else {
-  		players.push([{playerId:socket.id, playerNo:1}]);
-  	}
-  }*/
   if(players.length == 0) {
   	players.push({playerId:socket.id, playerNo:1, otherPlayer:null,score:0,lives:3});
   } else {
@@ -70,25 +41,20 @@ io.on('connection', function (socket) {
   		players.push({playerId:socket.id, playerNo:1, otherPlayer:null,score:0,lives:3});
   	}
   }
-  console.log(players);
   // send the players object to the new player
   socket.emit('currentPlayers', players);
   // send the star object to the new player
   // send the current scores
-  //socket.emit('scoreUpdate', scores);
   // update all other players of the new player
   socket.broadcast.emit('newPlayer', players[socket.id]);
 
   // when a player disconnects, remove them from our players object
   socket.on('disconnect', function () {
-    console.log('user disconnected: ', socket.id);
     //get pair
     var player = players.filter(p => p.playerId == socket.id)[0];
-    var otherPlayer = players.filter(p => p.playerId == player.otherPlayer)[0];
-    console.log(players);
+    var otherPlayer = players.filter(p => p.playerId == player.otherPlayer)[0];;
     var pair = pairs.filter(p => p.pairId == player.pairId);
     if(pair.length > 0) {
-      //console.log(pair);
       if(!pair[0].gameOver) {
         //Signal that he other player has gone
         //Need to send scores
@@ -109,15 +75,12 @@ io.on('connection', function (socket) {
 
   // when players are paired, notify the players it is ready
   socket.on('player2Ready', function (player) {
-  	console.log("paired");
     var player = players.filter(p => p.playerId === player.player.playerId)[0];
   	var pair = [];
   	var otherPlayer = players.filter(p => p.playerId === player.otherPlayer)[0];
   	//Assign a pair ID
   	player.pairId = pairId;
   	otherPlayer.pairId = pairId;
-    console.log(player);
-    console.log(otherPlayer);
     pair.push(player);
     pair.push(otherPlayer);
   	//Add to the pair array and then send the signal to the client that the pair is ready
@@ -132,7 +95,6 @@ io.on('connection', function (socket) {
   socket.on('movement', function (movementData) {
   	//Get zombie position to send as well
     var pair = pairs.filter(p => p.pairId == movementData.pairId);
-    //console.log(pair);
     if(pair.length > 0) {
       pair = pair[0];
     	var zombies = zombieData.filter(z => z.pairId == movementData.pairId);
@@ -163,7 +125,6 @@ io.on('connection', function (socket) {
 
   //Initialize zombie positions
   socket.on('zombiestart', function (zombies,pairId) {
-  	console.log("zombieStart");
   	zombieData.push(zombies);
     //Start movement
     var pair = pairs.filter(p => p.pairId == pairId)[0];
@@ -171,7 +132,6 @@ io.on('connection', function (socket) {
   });
 
   socket.on('sendicons', function(icons) {
-    console.log("iconssent");
   	iconGroups.push(icons);
   });
 
@@ -255,13 +215,9 @@ io.on('connection', function (socket) {
 
 });
 
-server.listen(8081, function () {
-  console.log(`Listening on ${server.address().port}`);
+server.listen(port, function(){
+  console.log('listening on *:' + port);
 });
-
-
-
-
 
 function getAdjacentTiles(x,y,map) {
 	adjacentTiles = [];

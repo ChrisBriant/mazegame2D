@@ -4,17 +4,17 @@ import Title from "./title.js";
 import Multiplayer from "./multiplayer.js";
 import WebfontLoaderPlugin from 'phaser3-rex-plugins/plugins/webfontloader-plugin.js';
 import RoundRectanglePlugin from 'phaser3-rex-plugins/plugins/roundrectangle-plugin.js';
-//import ChangeLevel from "./changelevel.js";
 
 var config = {
     type: Phaser.AUTO,
     width: 800,
     height: 600,
+    parent: "parent",
     physics: {
         default: 'arcade',
         arcade: {
             gravity: {y: 500},
-            debug: true
+            debug: false
         }
     },
     plugins: {
@@ -30,6 +30,7 @@ var config = {
       },]
     },
     scene: [Title,Level1,Multiplayer]
+    //scene: [Multiplayer,Title]
 }
 
 var game = new Phaser.Game(config);
@@ -37,7 +38,6 @@ var game = new Phaser.Game(config);
 //Set Global
 game.registry.set('score',0);
 game.registry.set('level',1);
-game.registry.set('lives',0);
+game.registry.set('lives',3);
 //Multiplayer Keys
-//game.registry.set('multiplayer',false);
 game.registry.set('wins',{1:false,2:false,3:false,4:false,5:false})

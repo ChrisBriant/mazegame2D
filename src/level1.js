@@ -17,7 +17,9 @@ export default new Phaser.Class({
         // map made with Tiled in JSON format
         this.load.tilemapTiledJSON('map1', 'assets/level1.json');
         this.load.tilemapTiledJSON('map2', 'assets/level2.json');
-        this.load.tilemapTiledJSON('map3', 'assets/level2.json');
+        this.load.tilemapTiledJSON('map3', 'assets/level3.json');
+        this.load.tilemapTiledJSON('map4', 'assets/level4.json');
+        this.load.tilemapTiledJSON('map5', 'assets/level5.json');
         // tiles in spritesheet
         this.load.spritesheet('tilemap', 'assets/tilemap.png', {frameWidth: 32, frameHeight: 32});
         //this.load.spritesheet('icons', 'assets/icons.png', {frameWidth: 32, frameHeight: 32});
@@ -30,17 +32,22 @@ export default new Phaser.Class({
         this.load.image('rice', 'assets/icons/rice.png');
         this.load.image('pop', 'assets/icons/pop.png');
         this.load.image('bread', 'assets/icons/bread.png');
+        //audio
+        this.load.audio('bgmusic', 'assets/music/Lobo_Loco_-_02_-_Brain_-_Instrumental_Retro_ID_1271.mp3');
+        this.load.audio('scoresound', 'assets/music/zapsplat_multimedia_game_tome_musical_synth_level_complete_etc_003_38429.mp3');
     },
 
    create: function() {
       this.level = this.registry.values.level;
-      console.log(this.level);
-      //console.log(this.registry);
       this.score = this.registry.values.score;
       this.gameMessage = "";
       this.levelComplete = false;
       this.playingDeathSeq = false;
       this.running = true;
+
+      //Create Audio
+      var bgmusic = this.sound.add('bgmusic');
+      bgmusic.play();
 
       var sc = this;
       //Key press escape go back to title
@@ -62,18 +69,15 @@ export default new Phaser.Class({
       // the player will collide with this layer
       this.shelves.setCollisionByExclusion([-1]);
 
-
-
       // set the boundaries of our game world
       this.physics.world.bounds.width = this.map.widthInPixels;
       this.physics.world.bounds.height = this.map.heightInPixels;
 
       // create the player sprite
       var playerLayer = this.map.getObjectLayer('player')['objects'];
-      //this.player = this.physics.add.sprite(playerLayer[0].x+16, playerLayer[0].y-16, 'player',0);
+      this.player = this.physics.add.sprite(playerLayer[0].x+16, playerLayer[0].y-16, 'player',0);
       //TESTING
       //this.player = this.physics.add.sprite(560, 216, 'player',0);
-      this.player = this.physics.add.sprite(752, 128, 'player',0);
       this.player.setCollideWorldBounds(true); // don't go out of the map
       this.player.body.setAllowGravity(false);
       this.player.dead = false;
@@ -107,10 +111,6 @@ export default new Phaser.Class({
           repeat: 0
       });
 
-      //this.iconLayer = this.map.createDynamicLayer('icons', iconTiles, 0, 0);
-      //this.icons = this.map.createFromObjects('icons', 'iconsprites', { key: 'icon' });
-
-      //console.log(this.icons);
       var icons = this.map.getObjectLayer('icons')['objects'];
       this.icongroup = this.physics.add.group();
       //Define order of collection
@@ -122,8 +122,6 @@ export default new Phaser.Class({
         'rice' : {'order':5,'points':5000},
         'toiletroll' : {'order':6,'points':10000},
       }
-
-      console.log(this.iconOrder['beans']);
 
       icons.forEach(icon => {
         var iconsprite = this.icongroup.create(icon.x+16, icon.y-16, icon.name);
@@ -137,16 +135,6 @@ export default new Phaser.Class({
           this.activeSprite = iconsprite;
         }
       });
-
-      //For testing scene transition
-      /*
-      this.activeSprite.destroy();
-      this.activeSprite = this.icongroup.children.entries.filter(icon => icon.collectOrder == 6)[0]
-      console.log(this.activeSprite);
-      this.activeSprite.setVisible(true);
-      this.activeSprite.setActive(true);
-      */
-      console.log(this.activeSprite);
 
       var zombies = this.map.getObjectLayer('zombie')['objects'];
       this.zombiegroup = this.physics.add.group();
@@ -191,11 +179,6 @@ export default new Phaser.Class({
       this.cameras.main.setBounds(0, 0, this.map.widthInPixels, this.map.heightInPixels);
       // make the camera follow the player
       this.cameras.main.startFollow(this.player);
-
-      // set background color, so the sky is not black
-      //this.cameras.main.setBackgroundColor('#ccccff');
-
-
       this.blackRectangle = this.add.graphics({ fillStyle: { color: 0x000000} }).setAlpha(0);
 
       // text which floats to top when points scored
@@ -229,9 +212,6 @@ export default new Phaser.Class({
       this.livesTxt.setScrollFactor(0);
 
       //Centre of screen
-      //this.screenCenterX = this.cameras.main.worldView.x + this.cameras.main.width / 2;
-      //this.screenCenterY = this.cameras.main.worldView.y + this.cameras.main.height / 2;
-
       this.messageTxt = this.add.text(0,0, '', {
           fontFamily: 'Londrina Solid',
           fontSize: '20px',
@@ -246,8 +226,6 @@ export default new Phaser.Class({
   update: function(time, delta) {
     if(this.running) {
       //Update the display with the new velocity
-      //this.speed.setText(this.player.body.velocity.x);
-
       //Make text "float" upwards
       if(this.points.y != 0) {
         this.points.y -= 4;
@@ -302,10 +280,12 @@ export default new Phaser.Class({
       //Get the active icon area and check for overlap
       if(!this.levelComplete) {
         var iconarea = new Phaser.Geom.Rectangle(this.activeSprite.x-16,this.activeSprite.y-16, 32, 32);
+        var scoresound = this.sound.add('scoresound');
+        //Play sound effect
         if (iconarea.contains(this.player.x,this.player.y)) {
+          scoresound.play();
           if(this.activeSprite.collectOrder != 6) {
             var nextSprite = this.activeSprite.collectOrder;
-
             //Score text
             this.score += this.activeSprite.points;
             this.scoreTxt.setText('Score: '+this.score);
@@ -313,10 +293,7 @@ export default new Phaser.Class({
             this.points.setPosition(this.activeSprite.x, this.activeSprite.y-16);
             this.points.setVisible(true);
             this.activeSprite.destroy();
-            console.log(nextSprite);
-            console.log(this.icongroup.children.entries);
             this.activeSprite = this.icongroup.children.entries.filter(icon => icon.collectOrder == nextSprite+1)[0];
-            console.log(this.activeSprite);
             this.activeSprite.setVisible(true);
             this.activeSprite.setActive(true);
           } else {
@@ -328,7 +305,11 @@ export default new Phaser.Class({
             this.points.setVisible(true);
             this.activeSprite.destroy();
             //Scene Transition
-            this.gameMessage = "Level " + this.level + " Complete";
+            if(this.level+1 > 5) {
+              this.gameMessage = "Well Done! Game Complete";
+            } else {
+              this.gameMessage = "Level " + this.level + " Complete";
+            }
             this.messageTxt.setText(this.gameMessage).setOrigin(0.5);
             this.messageTxt.setPosition(400, 300);
             this.messageTxt.setVisible(true);
@@ -338,9 +319,13 @@ export default new Phaser.Class({
                 //go to next level
                 this.registry.set('score',this.score);
                 this.registry.set('level',this.level+1);
-                //this.load.start();
                 this.running = false;
-                this.scene.restart();
+                //Transition if not at end of game
+                if(this.level+1 > 5) {
+                  this.scene.start('Title');
+                } else {
+                  this.scene.restart();
+                }
               },
               callbackScope: this,
               loop: false
@@ -348,14 +333,10 @@ export default new Phaser.Class({
           }
         }
       }
-
-      //this.graphics.clear();
-      //this.graphics.fillRectShape(iconarea);
     }
   },
 
   moveZombie: function (zombie) {
-    console.log(zombie.moved);
     if(!zombie.moved) {
       zombie.moved = true;
       var adjacentTiles = [];
@@ -388,8 +369,6 @@ export default new Phaser.Class({
     var rect = new Phaser.Geom.Rectangle(x, y, 24, 24);
     var tiles = this.shelves.getTilesWithinShape(rect);
     var collidingTiles = tiles.filter(t => t.index != -1);
-    //this.graphics.clear();
-    //this.graphics.fillRectShape(rect);
     if(collidingTiles.length > 0) {
       return true;
     } else {
@@ -400,7 +379,6 @@ export default new Phaser.Class({
   zombieEatPlayer: function(zombie) {
     var deathRect = new Phaser.Geom.Rectangle(this.player.body.x, this.player.body.y, 32, 32);
     if(deathRect.contains(zombie.x,zombie.y) && !this.player.dead) {
-      console.log("Player Died");
       this.player.dead = true;
 
       //Fade out screen
